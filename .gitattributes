@@ -1,0 +1,2 @@
+# Mark generated files so GitHub collapses them in PRs
+*.gen.go linguist-generated=true
