@@ -189,7 +189,7 @@ func NewListContainersRequest(server string, params *ListContainersParams) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/containers")
+	operationPath := fmt.Sprintf("/api/v1alpha1/containers")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -281,7 +281,7 @@ func NewCreateContainerRequestWithBody(server string, params *CreateContainerPar
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/containers")
+	operationPath := fmt.Sprintf("/api/v1alpha1/containers")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -339,7 +339,7 @@ func NewDeleteContainerRequest(server string, containerId ContainerIdPath) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/containers/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/v1alpha1/containers/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -373,7 +373,7 @@ func NewGetContainerRequest(server string, containerId ContainerIdPath) (*http.R
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/containers/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/v1alpha1/containers/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}

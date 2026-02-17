@@ -13,8 +13,8 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 
 servers:
-  - url: /api/v1alpha1
-    description: API v1alpha1
+  - url: /
+    description: K8s Container Service Provider
 
 tags:
   - name: Health
@@ -38,7 +38,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Health'
 
-  /containers:
+  /api/v1alpha1/containers:
     get:
       summary: List Containers
       description: Retrieve a list of containers with pagination support
@@ -169,7 +169,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /containers/{containerId}:
+  /api/v1alpha1/containers/{containerId}:
     get:
       summary: Get Container
       description: Retrieve a specific container instance by ID
