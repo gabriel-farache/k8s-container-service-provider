@@ -271,7 +271,7 @@ components:
           - health
       required:
         - type
-        - state
+        - status
         - path
       properties:
         type:
@@ -280,15 +280,25 @@ components:
           readOnly: true
           description: Resource type identifier
           example: "k8s-container-service-provider.dcm.io/health"
-        state:
+        status:
           type: string
-          description: Health state
+          description: Health status
           example: "healthy"
         path:
           type: string
           readOnly: true
           description: Canonical path of the resource
           example: "health"
+        version:
+          type: string
+          readOnly: true
+          description: Service provider build version
+          example: "1.0.0"
+        uptime:
+          type: integer
+          readOnly: true
+          description: Seconds since the service provider started
+          example: 3600
 
     ContainerStatus:
       type: string
@@ -429,6 +439,7 @@ components:
           type: string
           description: Resource name identifier
           pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+          maxLength: 63
         labels:
           type: object
           description: Custom key-value pairs for tagging and filtering
@@ -535,6 +546,9 @@ components:
     ServicePort:
       type: object
       description: Service port details
+      required:
+        - port
+        - targetPort
       properties:
         port:
           type: integer

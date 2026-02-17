@@ -209,11 +209,17 @@ type Health struct {
 	// Path Canonical path of the resource
 	Path *string `json:"path,omitempty"`
 
-	// State Health state
-	State string `json:"state"`
+	// Status Health status
+	Status string `json:"status"`
 
 	// Type Resource type identifier
 	Type *string `json:"type,omitempty"`
+
+	// Uptime Seconds since the service provider started
+	Uptime *int `json:"uptime,omitempty"`
+
+	// Version Service provider build version
+	Version *string `json:"version,omitempty"`
 }
 
 // KubernetesProviderHints Kubernetes-specific provider hints
@@ -263,13 +269,13 @@ type ServiceInfoType string
 // ServicePort Service port details
 type ServicePort struct {
 	// Port Service port number
-	Port *int `json:"port,omitempty"`
+	Port int `json:"port"`
 
 	// Protocol Protocol (TCP, UDP)
 	Protocol *string `json:"protocol,omitempty"`
 
 	// TargetPort Target container port
-	TargetPort *int `json:"targetPort,omitempty"`
+	TargetPort int `json:"targetPort"`
 }
 
 // ContainerIdPath defines model for ContainerIdPath.
