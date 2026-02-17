@@ -46,12 +46,6 @@ paths:
       tags:
         - Containers
       parameters:
-        - name: filter
-          in: query
-          description: Filter expression for containers
-          required: false
-          schema:
-            type: string
         - name: max_page_size
           in: query
           description: Maximum number of resources to return in a single page

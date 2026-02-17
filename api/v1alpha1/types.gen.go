@@ -283,9 +283,6 @@ type ContainerIdPath = string
 
 // ListContainersParams defines parameters for ListContainers.
 type ListContainersParams struct {
-	// Filter Filter expression for containers
-	Filter *string `form:"filter,omitempty" json:"filter,omitempty"`
-
 	// MaxPageSize Maximum number of resources to return in a single page
 	MaxPageSize *int32 `form:"max_page_size,omitempty" json:"max_page_size,omitempty"`
 
