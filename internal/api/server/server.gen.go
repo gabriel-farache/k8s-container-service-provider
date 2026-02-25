@@ -18,16 +18,16 @@ import (
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// List Containers
-	// (GET /containers)
+	// (GET /api/v1alpha1/containers)
 	ListContainers(w http.ResponseWriter, r *http.Request, params ListContainersParams)
 	// Create Container
-	// (POST /containers)
+	// (POST /api/v1alpha1/containers)
 	CreateContainer(w http.ResponseWriter, r *http.Request, params CreateContainerParams)
 	// Delete Container
-	// (DELETE /containers/{containerId})
+	// (DELETE /api/v1alpha1/containers/{container_id})
 	DeleteContainer(w http.ResponseWriter, r *http.Request, containerId ContainerIdPath)
 	// Get Container
-	// (GET /containers/{containerId})
+	// (GET /api/v1alpha1/containers/{container_id})
 	GetContainer(w http.ResponseWriter, r *http.Request, containerId ContainerIdPath)
 	// Health Check
 	// (GET /health)
@@ -39,25 +39,25 @@ type ServerInterface interface {
 type Unimplemented struct{}
 
 // List Containers
-// (GET /containers)
+// (GET /api/v1alpha1/containers)
 func (_ Unimplemented) ListContainers(w http.ResponseWriter, r *http.Request, params ListContainersParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Create Container
-// (POST /containers)
+// (POST /api/v1alpha1/containers)
 func (_ Unimplemented) CreateContainer(w http.ResponseWriter, r *http.Request, params CreateContainerParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Delete Container
-// (DELETE /containers/{containerId})
+// (DELETE /api/v1alpha1/containers/{container_id})
 func (_ Unimplemented) DeleteContainer(w http.ResponseWriter, r *http.Request, containerId ContainerIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Get Container
-// (GET /containers/{containerId})
+// (GET /api/v1alpha1/containers/{container_id})
 func (_ Unimplemented) GetContainer(w http.ResponseWriter, r *http.Request, containerId ContainerIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -84,14 +84,6 @@ func (siw *ServerInterfaceWrapper) ListContainers(w http.ResponseWriter, r *http
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListContainersParams
-
-	// ------------- Optional query parameter "filter" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "filter", r.URL.Query(), &params.Filter)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter", Err: err})
-		return
-	}
 
 	// ------------- Optional query parameter "max_page_size" -------------
 
@@ -152,12 +144,12 @@ func (siw *ServerInterfaceWrapper) DeleteContainer(w http.ResponseWriter, r *htt
 
 	var err error
 
-	// ------------- Path parameter "containerId" -------------
+	// ------------- Path parameter "container_id" -------------
 	var containerId ContainerIdPath
 
-	err = runtime.BindStyledParameterWithOptions("simple", "containerId", chi.URLParam(r, "containerId"), &containerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "container_id", chi.URLParam(r, "container_id"), &containerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "containerId", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "container_id", Err: err})
 		return
 	}
 
@@ -177,12 +169,12 @@ func (siw *ServerInterfaceWrapper) GetContainer(w http.ResponseWriter, r *http.R
 
 	var err error
 
-	// ------------- Path parameter "containerId" -------------
+	// ------------- Path parameter "container_id" -------------
 	var containerId ContainerIdPath
 
-	err = runtime.BindStyledParameterWithOptions("simple", "containerId", chi.URLParam(r, "containerId"), &containerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "container_id", chi.URLParam(r, "container_id"), &containerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "containerId", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "container_id", Err: err})
 		return
 	}
 
@@ -325,16 +317,16 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/containers", wrapper.ListContainers)
+		r.Get(options.BaseURL+"/api/v1alpha1/containers", wrapper.ListContainers)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/containers", wrapper.CreateContainer)
+		r.Post(options.BaseURL+"/api/v1alpha1/containers", wrapper.CreateContainer)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/containers/{containerId}", wrapper.DeleteContainer)
+		r.Delete(options.BaseURL+"/api/v1alpha1/containers/{container_id}", wrapper.DeleteContainer)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/containers/{containerId}", wrapper.GetContainer)
+		r.Get(options.BaseURL+"/api/v1alpha1/containers/{container_id}", wrapper.GetContainer)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/health", wrapper.GetHealth)
@@ -460,7 +452,7 @@ func (response CreateContainer500ApplicationProblemPlusJSONResponse) VisitCreate
 }
 
 type DeleteContainerRequestObject struct {
-	ContainerId ContainerIdPath `json:"containerId"`
+	ContainerId ContainerIdPath `json:"container_id"`
 }
 
 type DeleteContainerResponseObject interface {
@@ -512,7 +504,7 @@ func (response DeleteContainer500ApplicationProblemPlusJSONResponse) VisitDelete
 }
 
 type GetContainerRequestObject struct {
-	ContainerId ContainerIdPath `json:"containerId"`
+	ContainerId ContainerIdPath `json:"container_id"`
 }
 
 type GetContainerResponseObject interface {
@@ -583,16 +575,16 @@ func (response GetHealth200JSONResponse) VisitGetHealthResponse(w http.ResponseW
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// List Containers
-	// (GET /containers)
+	// (GET /api/v1alpha1/containers)
 	ListContainers(ctx context.Context, request ListContainersRequestObject) (ListContainersResponseObject, error)
 	// Create Container
-	// (POST /containers)
+	// (POST /api/v1alpha1/containers)
 	CreateContainer(ctx context.Context, request CreateContainerRequestObject) (CreateContainerResponseObject, error)
 	// Delete Container
-	// (DELETE /containers/{containerId})
+	// (DELETE /api/v1alpha1/containers/{container_id})
 	DeleteContainer(ctx context.Context, request DeleteContainerRequestObject) (DeleteContainerResponseObject, error)
 	// Get Container
-	// (GET /containers/{containerId})
+	// (GET /api/v1alpha1/containers/{container_id})
 	GetContainer(ctx context.Context, request GetContainerRequestObject) (GetContainerResponseObject, error)
 	// Health Check
 	// (GET /health)

@@ -73,14 +73,14 @@ type Container struct {
 
 	// ProviderHints Optional provider-specific configuration.
 	// Providers use hints they recognize and ignore unknown hints.
-	ProviderHints *ProviderHints `json:"providerHints,omitempty"`
+	ProviderHints *ProviderHints `json:"provider_hints,omitempty"`
 
 	// Resources CPU and memory resource constraints
 	Resources ContainerResources `json:"resources"`
 	Service   *ServiceInfo       `json:"service,omitempty"`
 
 	// ServiceType Service type identifier (must be "container")
-	ServiceType ContainerServiceType `json:"serviceType"`
+	ServiceType ContainerServiceType `json:"service_type"`
 	Status      *ContainerStatus     `json:"status,omitempty"`
 
 	// UpdateTime Timestamp when the container was last updated
@@ -156,7 +156,7 @@ type ContainerNetwork struct {
 // ContainerPort Container port definition
 type ContainerPort struct {
 	// ContainerPort Port number inside container
-	ContainerPort int `json:"containerPort"`
+	ContainerPort int `json:"container_port"`
 }
 
 // ContainerProcess Container process configuration
@@ -209,11 +209,17 @@ type Health struct {
 	// Path Canonical path of the resource
 	Path *string `json:"path,omitempty"`
 
-	// State Health state
-	State string `json:"state"`
+	// Status Health status
+	Status string `json:"status"`
 
 	// Type Resource type identifier
 	Type *string `json:"type,omitempty"`
+
+	// Uptime Seconds since the service provider started
+	Uptime *int `json:"uptime,omitempty"`
+
+	// Version Service provider build version
+	Version *string `json:"version,omitempty"`
 }
 
 // KubernetesProviderHints Kubernetes-specific provider hints
@@ -244,11 +250,11 @@ type ProviderHints struct {
 
 // ServiceInfo Kubernetes Service details
 type ServiceInfo struct {
-	// ClusterIP Cluster-internal IP address
-	ClusterIP *string `json:"clusterIP,omitempty"`
+	// ClusterIp Cluster-internal IP address
+	ClusterIp *string `json:"cluster_ip,omitempty"`
 
-	// ExternalIP External IP address (for LoadBalancer type)
-	ExternalIP *string `json:"externalIP,omitempty"`
+	// ExternalIp External IP address (for LoadBalancer type)
+	ExternalIp *string `json:"external_ip,omitempty"`
 
 	// Ports Service ports
 	Ports *[]ServicePort `json:"ports,omitempty"`
@@ -263,13 +269,13 @@ type ServiceInfoType string
 // ServicePort Service port details
 type ServicePort struct {
 	// Port Service port number
-	Port *int `json:"port,omitempty"`
+	Port int `json:"port"`
 
 	// Protocol Protocol (TCP, UDP)
 	Protocol *string `json:"protocol,omitempty"`
 
 	// TargetPort Target container port
-	TargetPort *int `json:"targetPort,omitempty"`
+	TargetPort int `json:"target_port"`
 }
 
 // ContainerIdPath defines model for ContainerIdPath.
@@ -277,9 +283,6 @@ type ContainerIdPath = string
 
 // ListContainersParams defines parameters for ListContainers.
 type ListContainersParams struct {
-	// Filter Filter expression for containers
-	Filter *string `form:"filter,omitempty" json:"filter,omitempty"`
-
 	// MaxPageSize Maximum number of resources to return in a single page
 	MaxPageSize *int32 `form:"max_page_size,omitempty" json:"max_page_size,omitempty"`
 

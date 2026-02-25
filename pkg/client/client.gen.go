@@ -189,7 +189,7 @@ func NewListContainersRequest(server string, params *ListContainersParams) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/containers")
+	operationPath := fmt.Sprintf("/api/v1alpha1/containers")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -201,22 +201,6 @@ func NewListContainersRequest(server string, params *ListContainersParams) (*htt
 
 	if params != nil {
 		queryValues := queryURL.Query()
-
-		if params.Filter != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "filter", runtime.ParamLocationQuery, *params.Filter); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
 
 		if params.MaxPageSize != nil {
 
@@ -281,7 +265,7 @@ func NewCreateContainerRequestWithBody(server string, params *CreateContainerPar
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/containers")
+	operationPath := fmt.Sprintf("/api/v1alpha1/containers")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -329,7 +313,7 @@ func NewDeleteContainerRequest(server string, containerId ContainerIdPath) (*htt
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "containerId", runtime.ParamLocationPath, containerId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "container_id", runtime.ParamLocationPath, containerId)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +323,7 @@ func NewDeleteContainerRequest(server string, containerId ContainerIdPath) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/containers/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/v1alpha1/containers/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -363,7 +347,7 @@ func NewGetContainerRequest(server string, containerId ContainerIdPath) (*http.R
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "containerId", runtime.ParamLocationPath, containerId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "container_id", runtime.ParamLocationPath, containerId)
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +357,7 @@ func NewGetContainerRequest(server string, containerId ContainerIdPath) (*http.R
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/containers/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/v1alpha1/containers/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
