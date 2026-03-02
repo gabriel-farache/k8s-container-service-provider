@@ -783,16 +783,16 @@ for full descriptions.
 - **Requirement:** REQ-REG-020
 - **Priority:** High
 - **Type:** Integration
-- **Transitively covers:** TC-U043 (Payload contains all required fields), TC-U044 (Payload includes region and zone metadata)
-- **Given:** Provider config: `name="k8s-sp"`, `displayName="K8s SP"`, `endpoint="https://sp.example.com"`, `region="us-east-1"`, `zone="us-east-1a"`
+- **Transitively covers:** TC-U043 (Payload contains all configured fields), TC-U044 (Payload includes region and zone metadata)
+- **Given:** Provider config: `name="k8s-sp"`, `display_name="K8s SP"`, `endpoint="https://sp.example.com"`, `region="us-east-1"`, `zone="us-east-1a"`
 - **When:** Registration is sent to the mock server
 - **Then:** Request body contains:
   - `name: "k8s-sp"`
-  - `serviceType: "container"`
-  - `displayName: "K8s SP"`
+  - `service_type: "container"`
+  - `display_name: "K8s SP"`
   - `endpoint: "https://sp.example.com/api/v1alpha1/containers"`
   - `operations: ["CREATE", "DELETE", "READ"]`
-  - `metadata.region: "us-east-1"`
+  - `metadata.region_code: "us-east-1"`
   - `metadata.zone: "us-east-1a"`
 
 ### TC-I055: Registration does not block server startup
@@ -840,15 +840,15 @@ for full descriptions.
 - **When:** Registration is performed
 - **Then:** The call goes through `github.com/dcm-project/service-provider-api/pkg/registration/client` (verified by the mock server receiving the expected request format from the library)
 
-### TC-I068: Registration omits metadata when region and zone not configured
+### TC-I068: Registration omits optional fields when not configured
 
 - **Requirement:** REQ-REG-020
 - **Priority:** Medium
 - **Type:** Integration
-- **Transitively covers:** TC-U045 (Payload omits metadata when region and zone not configured)
-- **Given:** Provider config: `name="k8s-sp"`, `displayName="K8s SP"`, `endpoint="https://sp.example.com"` with NO `region` or `zone` configured
+- **Transitively covers:** TC-U045 (Payload omits metadata when region and zone not configured), TC-U063 (Payload omits display_name when not configured)
+- **Given:** Provider config: `name="k8s-sp"`, `endpoint="https://sp.example.com"` with NO `display_name`, `region`, or `zone` configured
 - **When:** Registration is sent to the mock server
-- **Then:** Request body contains `name`, `serviceType`, `displayName`, `endpoint`, `operations` AND `metadata.region` and `metadata.zone` are absent from the payload
+- **Then:** Request body contains `name`, `service_type`, `endpoint`, `operations` AND `display_name`, `metadata.region_code`, and `metadata.zone` are absent from the payload
 
 ### TC-I083: Repeated registration start requests produce only one registration attempt
 

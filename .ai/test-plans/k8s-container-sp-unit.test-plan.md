@@ -710,17 +710,17 @@ dedicated test class or `Describe` block.
 - **Then:** An error is returned identifying each missing required field
 - **Referenced by:** TC-U002 (configuration loading)
 
-#### TC-U043: Payload contains all required fields
+#### TC-U043: Payload contains all configured fields
 
 - **Requirement:** REQ-REG-020
 - **Priority:** High
 - **Type:** Unit
-- **Given:** Provider config: `name="k8s-sp"`, `displayName="K8s Container SP"`, `endpoint="https://sp.example.com"`
+- **Given:** Provider config: `name="k8s-sp"`, `display_name="K8s Container SP"`, `endpoint="https://sp.example.com"`
 - **When:** Registration payload is constructed
 - **Then:**
   - `name` is `"k8s-sp"`
-  - `serviceType` is `"container"`
-  - `displayName` is `"K8s Container SP"`
+  - `service_type` is `"container"`
+  - `display_name` is `"K8s Container SP"`
   - `endpoint` is `"https://sp.example.com/api/v1alpha1/containers"`
   - `operations` contains `["CREATE", "DELETE", "READ"]`
 - **Referenced by:** TC-I054 (registration payload integration test)
@@ -732,7 +732,7 @@ dedicated test class or `Describe` block.
 - **Type:** Unit
 - **Given:** Provider config with `region="us-east-1"` and `zone="us-east-1a"`
 - **When:** Registration payload is constructed
-- **Then:** `metadata.region` is `"us-east-1"` AND `metadata.zone` is `"us-east-1a"`
+- **Then:** `metadata.region_code` is `"us-east-1"` AND `metadata.zone` is `"us-east-1a"`
 - **Referenced by:** TC-I054 (registration payload integration test)
 
 #### TC-U045: Payload omits metadata when region and zone not configured
@@ -742,8 +742,18 @@ dedicated test class or `Describe` block.
 - **Type:** Unit
 - **Given:** Provider config without region or zone
 - **When:** Registration payload is constructed
-- **Then:** `metadata.region` and `metadata.zone` are absent from the payload
+- **Then:** `metadata.region_code` and `metadata.zone` are absent from the payload
 - **Referenced by:** TC-I068 (registration without metadata integration test)
+
+#### TC-U063: Payload omits display_name when not configured
+
+- **Requirement:** REQ-REG-020
+- **Priority:** Medium
+- **Type:** Unit
+- **Given:** Provider config: `name="k8s-sp"`, `endpoint="https://sp.example.com"` with NO `display_name` configured
+- **When:** Registration payload is constructed
+- **Then:** `display_name` is absent from the payload (nil pointer)
+- **Referenced by:** TC-I068 (registration without optional fields integration test)
 
 ---
 
@@ -789,7 +799,7 @@ dedicated test class or `Describe` block.
 | REQ-MON-110   | TC-U038 (via TC-I066), TC-U039 (via TC-I067) | Covered |
 | REQ-MON-120   | TC-U040 (via TC-I043/I044), TC-U041 (via TC-I042) | Covered |
 | REQ-MON-150   | TC-U037 (via TC-I048)             | Covered |
-| REQ-REG-020   | TC-U043 (via TC-I054), TC-U044 (via TC-I054), TC-U045 (via TC-I068), TC-U062 | Covered |
+| REQ-REG-020   | TC-U043 (via TC-I054), TC-U044 (via TC-I054), TC-U045 (via TC-I068), TC-U062, TC-U063 (via TC-I068) | Covered |
 | REQ-XC-ID-010 | TC-U009 (id in path), TC-U024 (via TC-I009, metadata.name as K8s name) | Covered |
 | REQ-XC-ID-020 | TC-U013, TC-U046                  | Covered |
 | REQ-XC-ERR-010| TC-U022                           | Covered |
