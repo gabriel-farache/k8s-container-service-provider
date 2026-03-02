@@ -34,3 +34,5 @@ bin/
 # Temporary files
 *.tmp
 *.log
+
+.ai/reviews/** 

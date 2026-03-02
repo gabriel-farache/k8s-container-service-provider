@@ -3,10 +3,12 @@ package apiserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
+	"time"
 
 	v1alpha1 "github.com/dcm-project/k8s-container-service-provider/api/v1alpha1"
 	oapigen "github.com/dcm-project/k8s-container-service-provider/internal/api/server"
@@ -35,9 +37,10 @@ func (h *apiHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
 
 // Server is the HTTP server for the container service provider API.
 type Server struct {
-	cfg    *config.Config
-	logger *slog.Logger
-	srv    *http.Server
+	cfg     *config.Config
+	logger  *slog.Logger
+	srv     *http.Server
+	onReady func(context.Context)
 }
 
 // newBadRequestHandler returns a handler that writes a 400 Bad Request
@@ -55,6 +58,55 @@ func newBadRequestHandler(logger *slog.Logger) func(http.ResponseWriter, *http.R
 			"detail": err.Error(),
 		}); encErr != nil {
 			logger.Error("failed to encode error response", "error", encErr)
+		}
+	}
+}
+
+// readinessProbeTimeout is how long to wait for the server to confirm it is
+// serving HTTP requests before giving up and skipping the onReady callback.
+const readinessProbeTimeout = 5 * time.Second
+
+// readinessProbeInterval is the polling interval for the self-probe that
+// checks the /health endpoint before firing onReady.
+const readinessProbeInterval = 50 * time.Millisecond
+
+// WithOnReady registers a callback invoked once the server is confirmed to be
+// serving HTTP requests. The server verifies readiness by polling its own
+// health endpoint before calling fn. Use this to trigger work (e.g.
+// registration) that must wait until the HTTP server is ready.
+func (s *Server) WithOnReady(fn func(context.Context)) *Server {
+	s.onReady = fn
+	return s
+}
+
+// waitForReady polls the server's /health endpoint until it returns HTTP 200
+// or the context/timeout expires.
+func (s *Server) waitForReady(ctx context.Context, addr string) error {
+	url := fmt.Sprintf("http://%s/health", addr)
+	client := &http.Client{Timeout: 1 * time.Second}
+
+	deadline := time.NewTimer(readinessProbeTimeout)
+	defer deadline.Stop()
+
+	ticker := time.NewTicker(readinessProbeInterval)
+	defer ticker.Stop()
+
+	for {
+		resp, err := client.Get(url) //nolint:noctx // probe is bounded by client timeout and outer deadline
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return nil
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-deadline.C:
+			return fmt.Errorf("server readiness probe timed out after %s", readinessProbeTimeout)
+		case <-ticker.C:
+			// continue polling
 		}
 	}
 }
@@ -87,19 +139,25 @@ func New(cfg *config.Config, logger *slog.Logger) *Server {
 	emptyIDHandler := func(w http.ResponseWriter, r *http.Request) {
 		badReq(w, r, fmt.Errorf("container_id is required and cannot be empty"))
 	}
-	r.Get("/api/v1alpha1/containers/", emptyIDHandler)
-	r.Delete("/api/v1alpha1/containers/", emptyIDHandler)
+	postPath, pathErr := v1alpha1.PostPath()
+	if pathErr != nil {
+		logger.Warn("failed to resolve POST path from OpenAPI spec, trailing-slash guards disabled", "error", pathErr)
+	} else {
+		r.Get(postPath+"/", emptyIDHandler)
+		r.Delete(postPath+"/", emptyIDHandler)
+	}
 
 	handler := oapigen.HandlerWithOptions(h, oapigen.ChiServerOptions{
 		BaseRouter:       r,
 		ErrorHandlerFunc: badReq,
 	})
 
-	return &Server{
+	s := &Server{
 		cfg:    cfg,
 		logger: logger,
 		srv:    &http.Server{Handler: handler},
 	}
+	return s
 }
 
 // openAPIValidationMiddleware validates incoming requests against the OpenAPI spec.
@@ -139,11 +197,26 @@ func (s *Server) Run(ctx context.Context, ln net.Listener) error {
 
 	serveCh := make(chan error, 1)
 	go func() {
-		if err := s.srv.Serve(ln); err != nil && err != http.ErrServerClosed {
+		if err := s.srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serveCh <- err
 		}
 		close(serveCh)
 	}()
+
+	if s.onReady != nil {
+		if err := s.waitForReady(ctx, ln.Addr().String()); err != nil {
+			s.logger.Error("readiness probe failed, skipping onReady callback", "error", err)
+		} else {
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						s.logger.Error("onReady callback panicked", "panic", r)
+					}
+				}()
+				s.onReady(ctx)
+			}()
+		}
+	}
 
 	select {
 	case <-ctx.Done():

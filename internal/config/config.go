@@ -13,13 +13,29 @@ type ServerConfig struct {
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"15s"`
 }
 
+// ProviderConfig holds service provider identity and metadata.
+type ProviderConfig struct {
+	Name        string `env:"NAME,notEmpty"`
+	DisplayName string `env:"DISPLAY_NAME"`
+	Endpoint    string `env:"ENDPOINT,notEmpty"`
+	Region      string `env:"REGION"`
+	Zone        string `env:"ZONE"`
+}
+
+// DCMConfig holds DCM registry connection settings.
+type DCMConfig struct {
+	RegistrationURL string `env:"REGISTRATION_URL,notEmpty"`
+}
+
 // Config is the root configuration for the service provider.
 type Config struct {
-	Server ServerConfig `envPrefix:"SP_SERVER_"`
+	Server   ServerConfig   `envPrefix:"SP_SERVER_"`
+	Provider ProviderConfig `envPrefix:"SP_PROVIDER_"`
+	DCM      DCMConfig      `envPrefix:"SP_DCM_"`
 }
 
 // Load reads configuration from environment variables.
-// Env vars: SP_SERVER_ADDRESS (default ":8080"), SP_SERVER_SHUTDOWN_TIMEOUT (default "15s").
+// Env vars: SP_SERVER_*, SP_PROVIDER_*, SP_DCM_* (see struct tags for details).
 func Load() (*Config, error) {
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/dcm-project/k8s-container-service-provider/internal/apiserver"
 	"github.com/dcm-project/k8s-container-service-provider/internal/config"
+	"github.com/dcm-project/k8s-container-service-provider/internal/registration"
 )
 
 func main() {
@@ -26,11 +27,18 @@ func main() {
 		logger.Error("failed to listen", "address", cfg.Server.Address, "error", err)
 		os.Exit(1)
 	}
+	defer ln.Close()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	srv := apiserver.New(cfg, logger)
+	registrar, err := registration.NewRegistrar(cfg, logger)
+	if err != nil {
+		logger.Error("failed to create registrar", "error", err)
+		os.Exit(1)
+	}
+
+	srv := apiserver.New(cfg, logger).WithOnReady(registrar.Start)
 	if err := srv.Run(ctx, ln); err != nil {
 		logger.Error("server error", "error", err)
 		os.Exit(1)
