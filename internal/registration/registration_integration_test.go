@@ -98,7 +98,7 @@ var _ = Describe("Registration Integration", func() {
 
 		Eventually(func() bool {
 			return requestReceived.Load()
-		}).WithTimeout(3 * time.Second).WithPolling(100 * time.Millisecond).Should(BeTrue(),
+		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeTrue(),
 			"expected POST to /providers but no request was received")
 	})
 
@@ -141,7 +141,7 @@ var _ = Describe("Registration Integration", func() {
 
 		Eventually(func() bool {
 			return requestReceived.Load()
-		}).WithTimeout(3 * time.Second).WithPolling(100 * time.Millisecond).Should(BeTrue(),
+		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeTrue(),
 			"expected registration request but none was received")
 
 		Expect(receivedPayload.Name).To(Equal("k8s-sp"))
@@ -194,7 +194,7 @@ var _ = Describe("Registration Integration", func() {
 		// Registration should complete in the background
 		Eventually(func() bool {
 			return requestReceived.Load()
-		}).WithTimeout(10 * time.Second).WithPolling(200 * time.Millisecond).Should(BeTrue(),
+		}).WithTimeout(10*time.Second).WithPolling(200*time.Millisecond).Should(BeTrue(),
 			"expected registration to complete in background")
 	})
 
@@ -242,7 +242,7 @@ var _ = Describe("Registration Integration", func() {
 
 		Eventually(func() int32 {
 			return requestCount.Load()
-		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(BeNumerically(">=", int32(4)),
+		}).WithTimeout(5*time.Second).WithPolling(50*time.Millisecond).Should(BeNumerically(">=", int32(4)),
 			"expected at least 4 registration attempts")
 
 		// Verify increasing intervals between requests
@@ -286,7 +286,7 @@ var _ = Describe("Registration Integration", func() {
 
 		Eventually(func() string {
 			return logBuf.String()
-		}).WithTimeout(3 * time.Second).WithPolling(100 * time.Millisecond).Should(
+		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(
 			And(
 				ContainSubstring("registration"),
 				ContainSubstring("\"level\":\"WARN\""),
@@ -338,7 +338,7 @@ var _ = Describe("Registration Integration", func() {
 
 		Eventually(func() int32 {
 			return requestCount.Load()
-		}).WithTimeout(3 * time.Second).WithPolling(100 * time.Millisecond).Should(BeNumerically(">=", int32(1)),
+		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeNumerically(">=", int32(1)),
 			"expected first registration request")
 		cancel1()
 
@@ -351,7 +351,7 @@ var _ = Describe("Registration Integration", func() {
 
 		Eventually(func() int32 {
 			return requestCount.Load()
-		}).WithTimeout(3 * time.Second).WithPolling(100 * time.Millisecond).Should(BeNumerically(">=", int32(2)),
+		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeNumerically(">=", int32(2)),
 			"expected second registration request")
 
 		mu.Lock()
@@ -398,7 +398,7 @@ var _ = Describe("Registration Integration", func() {
 
 		Eventually(func() bool {
 			return requestReceived.Load()
-		}).WithTimeout(3 * time.Second).WithPolling(100 * time.Millisecond).Should(BeTrue(),
+		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeTrue(),
 			"expected registration request but none was received")
 
 		// Verify the body is valid JSON with expected structure
@@ -450,7 +450,7 @@ var _ = Describe("Registration Integration", func() {
 
 		Eventually(func() bool {
 			return requestReceived.Load()
-		}).WithTimeout(3 * time.Second).WithPolling(100 * time.Millisecond).Should(BeTrue(),
+		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeTrue(),
 			"expected registration request but none was received")
 
 		// Verify optional fields are absent
@@ -498,7 +498,7 @@ var _ = Describe("Registration Integration", func() {
 		// Wait for the registration attempt to complete.
 		Eventually(func() int32 {
 			return requestCount.Load()
-		}).WithTimeout(3 * time.Second).WithPolling(50 * time.Millisecond).Should(BeNumerically(">=", int32(1)),
+		}).WithTimeout(3*time.Second).WithPolling(50*time.Millisecond).Should(BeNumerically(">=", int32(1)),
 			"expected at least one registration attempt")
 
 		// Give extra time to ensure no additional goroutines sent requests.
@@ -541,7 +541,7 @@ var _ = Describe("Registration Integration", func() {
 		cancel()
 
 		// Done() channel should close.
-		Eventually(registrar.Done()).WithTimeout(3 * time.Second).Should(BeClosed(),
+		Eventually(registrar.Done()).WithTimeout(3*time.Second).Should(BeClosed(),
 			"Done() channel should close after context cancellation")
 	})
 
@@ -575,7 +575,7 @@ var _ = Describe("Registration Integration", func() {
 
 		// Done() channel should close after the successful 200 response,
 		// without requiring context cancellation.
-		Eventually(registrar.Done()).WithTimeout(3 * time.Second).Should(BeClosed(),
+		Eventually(registrar.Done()).WithTimeout(3*time.Second).Should(BeClosed(),
 			"Done() channel should close after successful registration")
 	})
 
@@ -620,7 +620,7 @@ var _ = Describe("Registration Integration", func() {
 		// Wait for enough attempts to exceed the cap if uncapped
 		Eventually(func() int32 {
 			return requestCount.Load()
-		}).WithTimeout(8 * time.Second).WithPolling(50 * time.Millisecond).Should(BeNumerically(">=", int32(8)),
+		}).WithTimeout(8*time.Second).WithPolling(50*time.Millisecond).Should(BeNumerically(">=", int32(8)),
 			"expected at least 8 registration attempts")
 
 		// Verify no interval exceeds the max cap (with tolerance for scheduling jitter)

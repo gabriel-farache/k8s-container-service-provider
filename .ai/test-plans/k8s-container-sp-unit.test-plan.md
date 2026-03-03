@@ -410,7 +410,7 @@ dedicated test class or `Describe` block.
 - **Type:** Unit (structural)
 - **Given:** The health handler struct
 - **When:** Its fields and constructor are inspected
-- **Then:** It accepts no K8s client, repository, or database dependency — only a start time and version string
+- **Then:** It accepts no K8s client, repository, or database dependency — only a start time, version string, and standard-library logger
 - **Referenced by:** TC-U005 (health handler constructed without external deps)
 
 #### TC-U008: Handler implements StrictServerInterface
@@ -755,6 +755,25 @@ dedicated test class or `Describe` block.
 - **Then:** `display_name` is absent from the payload (nil pointer)
 - **Referenced by:** TC-I068 (registration without optional fields integration test)
 
+#### TC-U064: Composite handler delegates GetHealth to health sub-handler
+
+- **Requirement:** REQ-HLT-010
+- **Priority:** Medium
+- **Type:** Unit
+- **Given:** A composite `Handler` is created with a logger, start time, and version
+- **When:** `GetHealth` is called on the composite handler
+- **Then:** The response is HTTP 200 with `Content-Type: application/json`, valid JSON body containing `status: "healthy"` and the configured version
+- **Referenced by:** TC-U005 (health handler unit tests)
+
+#### TC-U065: Unimplemented endpoints return 501
+
+- **Requirement:** REQ-API-010
+- **Priority:** Medium
+- **Type:** Unit
+- **Given:** A composite `Handler` with only the health sub-handler initialised
+- **When:** An unimplemented endpoint (e.g., `ListContainers`) is called
+- **Then:** The response is HTTP 501 Not Implemented (via the embedded `oapigen.Unimplemented` stub)
+
 ---
 
 ## Coverage Matrix
@@ -763,11 +782,11 @@ dedicated test class or `Describe` block.
 |---------------|-----------------------------------|---------|
 | REQ-HTTP-050  | TC-U002, TC-U004                  | Covered |
 | REQ-HTTP-090  | TC-U057 (via TC-I008), TC-U058 (via TC-I008) | Covered |
-| REQ-HLT-010   | TC-U005                           | Covered |
+| REQ-HLT-010   | TC-U005, TC-U064                  | Covered |
 | REQ-HLT-020   | TC-U005, TC-U006                  | Covered |
 | REQ-HLT-030   | TC-U005                           | Covered |
 | REQ-HLT-040   | TC-U007 (via TC-U005)             | Covered |
-| REQ-API-010   | TC-U008 (via TC-U009)             | Covered |
+| REQ-API-010   | TC-U008 (via TC-U009), TC-U065    | Covered |
 | REQ-API-020   | TC-U009                           | Covered |
 | REQ-API-030   | TC-U010                           | Covered |
 | REQ-API-040   | TC-U011                           | Covered |
@@ -807,7 +826,7 @@ dedicated test class or `Describe` block.
 | REQ-REG-070   | TC-U061                           | Covered |
 | REQ-XC-CFG-010| TC-U002, TC-U004, TC-U063         | Covered |
 
-**Total:** 61 test case IDs — 31 in behavioural test classes, 30 in the utility
+**Total:** 63 test case IDs — 33 in behavioural test classes, 30 in the utility
 index (tested transitively through higher-level behavioural and integration
 tests).
 

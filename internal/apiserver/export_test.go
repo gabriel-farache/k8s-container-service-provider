@@ -7,3 +7,6 @@ import "net/http"
 func (s *Server) WrapHandler(wrap func(http.Handler) http.Handler) {
 	s.srv.Handler = wrap(s.srv.Handler)
 }
+
+// ScrubValidationError is exported for unit testing via export_test.go.
+var ScrubValidationError = scrubValidationError

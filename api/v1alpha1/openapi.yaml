@@ -267,6 +267,8 @@ components:
         - type
         - status
         - path
+        - version
+        - uptime
       properties:
         type:
           type: string

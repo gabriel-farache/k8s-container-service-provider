@@ -11,6 +11,9 @@ import (
 type ServerConfig struct {
 	Address         string        `env:"ADDRESS"          envDefault:":8080"`
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"15s"`
+	ReadTimeout     time.Duration `env:"READ_TIMEOUT"     envDefault:"15s"`
+	WriteTimeout    time.Duration `env:"WRITE_TIMEOUT"    envDefault:"15s"`
+	IdleTimeout     time.Duration `env:"IDLE_TIMEOUT"     envDefault:"60s"`
 }
 
 // ProviderConfig holds service provider identity and metadata.

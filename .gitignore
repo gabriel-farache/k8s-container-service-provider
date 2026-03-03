@@ -35,4 +35,7 @@ bin/
 *.tmp
 *.log
 
-.ai/reviews/** 
+# AI workflow artifacts (keep specs and test plans)
+.ai/*
+!.ai/specs/
+!.ai/test-plans/

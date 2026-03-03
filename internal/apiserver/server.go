@@ -8,32 +8,19 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	v1alpha1 "github.com/dcm-project/k8s-container-service-provider/api/v1alpha1"
 	oapigen "github.com/dcm-project/k8s-container-service-provider/internal/api/server"
 	"github.com/dcm-project/k8s-container-service-provider/internal/config"
+	"github.com/dcm-project/k8s-container-service-provider/internal/util"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/getkin/kin-openapi/routers"
 	legacyrouter "github.com/getkin/kin-openapi/routers/legacy"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
-
-// apiHandler implements oapigen.ServerInterface.
-// It embeds Unimplemented so only GetHealth needs an override for now.
-type apiHandler struct {
-	oapigen.Unimplemented
-	logger *slog.Logger
-}
-
-func (h *apiHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(map[string]string{"status": "healthy"}); err != nil {
-		h.logger.Error("failed to encode health response", "error", err)
-	}
-}
 
 // Server is the HTTP server for the container service provider API.
 type Server struct {
@@ -45,18 +32,21 @@ type Server struct {
 
 // newBadRequestHandler returns a handler that writes a 400 Bad Request
 // response with an RFC 7807 application/problem+json body. It is used
-// by the parameter binding layer (generated chi wrapper), OpenAPI
-// validation middleware, and the empty-container_id guard.
+// by the parameter binding layer (generated chi wrapper) and OpenAPI
+// validation middleware.
 func newBadRequestHandler(logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
 	return func(w http.ResponseWriter, _ *http.Request, err error) {
+		status := int32(http.StatusBadRequest)
+		detail := scrubValidationError(err)
+		resp := v1alpha1.Error{
+			Type:   v1alpha1.INVALIDARGUMENT,
+			Title:  "Bad Request",
+			Status: util.Ptr(status),
+			Detail: util.Ptr(detail),
+		}
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusBadRequest)
-		if encErr := json.NewEncoder(w).Encode(map[string]any{
-			"type":   "INVALID_ARGUMENT",
-			"title":  "Bad Request",
-			"status": http.StatusBadRequest,
-			"detail": err.Error(),
-		}); encErr != nil {
+		if encErr := json.NewEncoder(w).Encode(resp); encErr != nil {
 			logger.Error("failed to encode error response", "error", encErr)
 		}
 	}
@@ -79,6 +69,133 @@ func (s *Server) WithOnReady(fn func(context.Context)) *Server {
 	return s
 }
 
+// scrubValidationError extracts a human-readable constraint message from
+// kin-openapi validation errors, stripping raw schema JSON and value dumps.
+// For unrecognised error types it returns a generic message to avoid leaking
+// internal details to clients.
+func scrubValidationError(err error) string {
+	const genericMsg = "invalid request"
+
+	// kin-openapi request validation errors carry structured metadata.
+	var reqErr *openapi3filter.RequestError
+	if errors.As(err, &reqErr) {
+		// Build location prefix (e.g., `parameter "max_page_size" in query`).
+		var prefix string
+		if p := reqErr.Parameter; p != nil {
+			prefix = fmt.Sprintf("parameter %q in %s", p.Name, p.In)
+		} else if reqErr.RequestBody != nil {
+			prefix = "request body"
+		}
+
+		// Extract the human-readable reason from the underlying SchemaError.
+		var schemaErr *openapi3.SchemaError
+		if errors.As(reqErr.Err, &schemaErr) && schemaErr.Reason != "" {
+			if prefix != "" {
+				return prefix + ": " + schemaErr.Reason
+			}
+			return schemaErr.Reason
+		}
+
+		// Fallback to RequestError.Reason if no SchemaError is available.
+		if reqErr.Reason != "" {
+			if prefix != "" {
+				return prefix + ": " + reqErr.Reason
+			}
+			return reqErr.Reason
+		}
+
+		return genericMsg
+	}
+
+	// oapi-codegen parameter binding errors — expose the parameter name
+	// but strip the raw parse error (e.g. strconv internals).
+	var paramErr *oapigen.InvalidParamFormatError
+	if errors.As(err, &paramErr) {
+		return fmt.Sprintf("invalid format for parameter %q", paramErr.ParamName)
+	}
+
+	// Unknown error type — return a generic message to avoid leaking internals.
+	return genericMsg
+}
+
+// statusRecordingResponseWriter wraps an http.ResponseWriter to track
+// whether headers have already been sent to the client. The recovery
+// middleware uses this to avoid writing a second status line after the
+// handler has already called WriteHeader or Write.
+type statusRecordingResponseWriter struct {
+	http.ResponseWriter
+	wroteHeader bool
+}
+
+func (w *statusRecordingResponseWriter) WriteHeader(code int) {
+	w.wroteHeader = true
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *statusRecordingResponseWriter) Write(b []byte) (int, error) {
+	w.wroteHeader = true
+	return w.ResponseWriter.Write(b)
+}
+
+func (w *statusRecordingResponseWriter) Flush() {
+	w.wroteHeader = true
+	if fl, ok := w.ResponseWriter.(http.Flusher); ok {
+		fl.Flush()
+	}
+}
+
+// Unwrap returns the underlying ResponseWriter, enabling Go 1.20+
+// http.ResponseController to discover optional interfaces.
+func (w *statusRecordingResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
+// rfc7807RecoveryMiddleware catches panics and returns an RFC 7807
+// application/problem+json response instead of a plain-text stack trace.
+//
+// Special cases:
+//   - http.ErrAbortHandler is re-panicked so net/http aborts the connection.
+//   - If the handler already called WriteHeader/Write, the middleware logs the
+//     panic but does not attempt to write a response (headers already on the wire).
+func rfc7807RecoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			sw := &statusRecordingResponseWriter{ResponseWriter: w}
+			defer func() {
+				if rec := recover(); rec != nil {
+					// http.ErrAbortHandler is a sentinel that tells
+					// net/http to abort the connection. Re-panic so
+					// the server's built-in handler takes over.
+					if rec == http.ErrAbortHandler {
+						panic(http.ErrAbortHandler)
+					}
+
+					logger.Error("panic recovered", "panic", rec, "stack", string(debug.Stack()))
+
+					if sw.wroteHeader {
+						logger.Warn("headers already sent, cannot write RFC 7807 response")
+						return
+					}
+
+					status := int32(http.StatusInternalServerError)
+					resp := v1alpha1.Error{
+						Type:   v1alpha1.INTERNAL,
+						Title:  "Internal Server Error",
+						Status: util.Ptr(status),
+						Detail: util.Ptr("an unexpected error occurred"),
+					}
+					w.Header().Set("Content-Type", "application/problem+json")
+					w.WriteHeader(http.StatusInternalServerError)
+					if encErr := json.NewEncoder(w).Encode(resp); encErr != nil {
+						logger.Error("failed to encode recovery response", "error", encErr)
+					}
+				}
+			}()
+			next.ServeHTTP(sw, r)
+		})
+	}
+}
+
 // waitForReady polls the server's /health endpoint until it returns HTTP 200
 // or the context/timeout expires.
 func (s *Server) waitForReady(ctx context.Context, addr string) error {
@@ -92,7 +209,11 @@ func (s *Server) waitForReady(ctx context.Context, addr string) error {
 	defer ticker.Stop()
 
 	for {
-		resp, err := client.Get(url) //nolint:noctx // probe is bounded by client timeout and outer deadline
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return fmt.Errorf("creating readiness probe request: %w", err)
+		}
+		resp, err := client.Do(req)
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
@@ -112,12 +233,11 @@ func (s *Server) waitForReady(ctx context.Context, addr string) error {
 }
 
 // New creates a new Server with the given config and logger.
-func New(cfg *config.Config, logger *slog.Logger) *Server {
-	h := &apiHandler{logger: logger}
+func New(cfg *config.Config, logger *slog.Logger, handler oapigen.ServerInterface) *Server {
 	badReq := newBadRequestHandler(logger)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Recoverer)
+	r.Use(rfc7807RecoveryMiddleware(logger))
 
 	// Load OpenAPI spec for request validation middleware.
 	spec, err := v1alpha1.GetSwagger()
@@ -136,8 +256,19 @@ func New(cfg *config.Config, logger *slog.Logger) *Server {
 	// Reject trailing-slash requests with empty container_id before the
 	// generated router sees them. Chi treats /containers/ as a distinct
 	// path from /containers/{container_id}, so without this route it would 404.
-	emptyIDHandler := func(w http.ResponseWriter, r *http.Request) {
-		badReq(w, r, fmt.Errorf("container_id is required and cannot be empty"))
+	emptyIDHandler := func(w http.ResponseWriter, _ *http.Request) {
+		status := int32(http.StatusBadRequest)
+		resp := v1alpha1.Error{
+			Type:   v1alpha1.INVALIDARGUMENT,
+			Title:  "Bad Request",
+			Status: util.Ptr(status),
+			Detail: util.Ptr("container_id is required and cannot be empty"),
+		}
+		w.Header().Set("Content-Type", "application/problem+json")
+		w.WriteHeader(http.StatusBadRequest)
+		if encErr := json.NewEncoder(w).Encode(resp); encErr != nil {
+			logger.Error("failed to encode error response", "error", encErr)
+		}
 	}
 	postPath, pathErr := v1alpha1.PostPath()
 	if pathErr != nil {
@@ -147,7 +278,7 @@ func New(cfg *config.Config, logger *slog.Logger) *Server {
 		r.Delete(postPath+"/", emptyIDHandler)
 	}
 
-	handler := oapigen.HandlerWithOptions(h, oapigen.ChiServerOptions{
+	httpHandler := oapigen.HandlerWithOptions(handler, oapigen.ChiServerOptions{
 		BaseRouter:       r,
 		ErrorHandlerFunc: badReq,
 	})
@@ -155,7 +286,12 @@ func New(cfg *config.Config, logger *slog.Logger) *Server {
 	s := &Server{
 		cfg:    cfg,
 		logger: logger,
-		srv:    &http.Server{Handler: handler},
+		srv: &http.Server{
+			Handler:      httpHandler,
+			ReadTimeout:  cfg.Server.ReadTimeout,
+			WriteTimeout: cfg.Server.WriteTimeout,
+			IdleTimeout:  cfg.Server.IdleTimeout,
+		},
 	}
 	return s
 }

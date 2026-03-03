@@ -16,6 +16,9 @@ var _ = Describe("Configuration", func() {
 	clearEnv := func() {
 		os.Unsetenv("SP_SERVER_ADDRESS")
 		os.Unsetenv("SP_SERVER_SHUTDOWN_TIMEOUT")
+		os.Unsetenv("SP_SERVER_READ_TIMEOUT")
+		os.Unsetenv("SP_SERVER_WRITE_TIMEOUT")
+		os.Unsetenv("SP_SERVER_IDLE_TIMEOUT")
 		os.Unsetenv("SP_PROVIDER_NAME")
 		os.Unsetenv("SP_PROVIDER_DISPLAY_NAME")
 		os.Unsetenv("SP_PROVIDER_ENDPOINT")
@@ -47,6 +50,9 @@ var _ = Describe("Configuration", func() {
 		os.Setenv("SP_PROVIDER_DISPLAY_NAME", "Test Provider")
 		os.Setenv("SP_PROVIDER_REGION", "us-east-1")
 		os.Setenv("SP_PROVIDER_ZONE", "us-east-1a")
+		os.Setenv("SP_SERVER_READ_TIMEOUT", "10s")
+		os.Setenv("SP_SERVER_WRITE_TIMEOUT", "20s")
+		os.Setenv("SP_SERVER_IDLE_TIMEOUT", "120s")
 
 		cfg, err := config.Load()
 		Expect(err).NotTo(HaveOccurred())
@@ -56,6 +62,9 @@ var _ = Describe("Configuration", func() {
 		Expect(cfg.Provider.Name).To(Equal("test-sp"))
 		Expect(cfg.Provider.DisplayName).To(Equal("Test Provider"))
 		Expect(cfg.Provider.Endpoint).To(Equal("https://test.example.com"))
+		Expect(cfg.Server.ReadTimeout).To(Equal(10 * time.Second))
+		Expect(cfg.Server.WriteTimeout).To(Equal(20 * time.Second))
+		Expect(cfg.Server.IdleTimeout).To(Equal(120 * time.Second))
 		Expect(cfg.Provider.Region).To(Equal("us-east-1"))
 		Expect(cfg.Provider.Zone).To(Equal("us-east-1a"))
 		Expect(cfg.DCM.RegistrationURL).To(Equal("https://dcm.example.com"))
@@ -70,6 +79,9 @@ var _ = Describe("Configuration", func() {
 		Expect(cfg).NotTo(BeNil())
 		Expect(cfg.Server.Address).To(Equal(":8080"))
 		Expect(cfg.Server.ShutdownTimeout).To(Equal(15 * time.Second))
+		Expect(cfg.Server.ReadTimeout).To(Equal(15 * time.Second))
+		Expect(cfg.Server.WriteTimeout).To(Equal(15 * time.Second))
+		Expect(cfg.Server.IdleTimeout).To(Equal(60 * time.Second))
 	})
 
 	// TC-U063: Load returns error when required fields are missing
