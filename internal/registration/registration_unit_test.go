@@ -70,8 +70,8 @@ var _ = Describe("Registration Payload", func() {
 		Expect(payload.Metadata).To(BeNil())
 	})
 
-	// TC-U063: Payload omits display_name when not configured
-	It("omits display_name when not configured (TC-U063)", func() {
+	// TC-U064: Payload omits display_name when not configured
+	It("omits display_name when not configured (TC-U064)", func() {
 		cfg := &config.Config{
 			Provider: config.ProviderConfig{
 				Name:     "k8s-sp",

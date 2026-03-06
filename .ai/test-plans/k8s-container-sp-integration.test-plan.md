@@ -129,6 +129,15 @@ for full descriptions.
 - **When:** SIGTERM is sent to the process
 - **Then:** The server waits for the shutdown timeout AND then force-terminates AND exits (does not hang indefinitely)
 
+### TC-I085: onReady callback invoked only after server is serving
+
+- **Requirement:** REQ-HTTP-010
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A server configured with an `onReady` callback
+- **When:** The server starts
+- **Then:** The `onReady` callback MUST NOT be invoked until the server is confirmed to be accepting HTTP connections (readiness probe succeeds)
+
 ---
 
 ## 2 · K8s Store — Create Operations
@@ -263,113 +272,131 @@ for full descriptions.
 
 > **Suggested Ginkgo structure:** `Describe("K8s Store")` → `Describe("Service Creation")`
 
-### TC-I019: Service created when createService config is true
+### TC-I019: Service created for port with internal visibility
 
 - **Requirement:** REQ-K8S-100
 - **Priority:** High
 - **Type:** Integration
-- **Given:** Config has `createService=true` AND container has `network.ports=[{containerPort: 8080}]`
+- **Given:** Container has port `{containerPort: 8080, visibility: internal}`
 - **When:** `Create` is called
-- **Then:** A Service is created in the configured namespace exposing port 8080
+- **Then:** A ClusterIP Service is created exposing port 8080
 
-### TC-I020: Service created when providerHints enables it
-
-- **Requirement:** REQ-K8S-100, REQ-K8S-160
-- **Priority:** High
-- **Type:** Integration
-- **Given:** Config has `createService=false` AND container has `providerHints.kubernetes.service.enabled=true` AND `network.ports` defined
-- **When:** `Create` is called
-- **Then:** A Service IS created (providerHints overrides config)
-
-### TC-I021: Service creation returns error when no ports defined
-
-- **Requirement:** REQ-K8S-105
-- **Priority:** High
-- **Type:** Integration
-- **Given:** Config has `createService=true` AND container has no `network.ports`
-- **When:** `Create` is called
-- **Then:** An error is returned indicating ports are required for Service creation AND no Deployment is created (operation is atomic)
-
-### TC-I022: Service includes all ports in single resource
+### TC-I022: Multiple internal ports in single Service
 
 - **Requirement:** REQ-K8S-110
 - **Priority:** High
 - **Type:** Integration
-- **Given:** Container has `network.ports=[{containerPort: 8080}, {containerPort: 9090}]` AND Service creation enabled
+- **Given:** Container has ports `[{containerPort: 8080, visibility: internal}, {containerPort: 9090, visibility: internal}]`
 - **When:** `Create` is called
 - **Then:** Exactly one Service is created AND it has two port entries (8080 and 9090)
 
-### TC-I023: Service uses default type from configuration
+### TC-I090: Multi-port Service has named ports for K8s compliance
+
+- **Requirement:** REQ-K8S-110
+- **Priority:** High
+- **Type:** Integration
+- **Given:** Container has ports `[{containerPort: 8080, visibility: internal}, {containerPort: 9090, visibility: internal}, {containerPort: 3000, visibility: internal}]`
+- **When:** `Create` is called
+- **Then:** Each ServicePort has a unique name (port-8080, port-9090, port-3000)
+
+### TC-I023: Internal-only ports produce ClusterIP Service
 
 - **Requirement:** REQ-K8S-120
 - **Priority:** High
 - **Type:** Integration
-- **Given:** Config has `defaultServiceType="ClusterIP"` AND no `providerHints` override
-- **When:** `Create` is called with Service creation enabled and ports defined
+- **Given:** All non-none ports have `visibility=internal`
+- **When:** `Create` is called
 - **Then:** Service type is `ClusterIP`
 
-### TC-I024: Service type overridden by providerHints
+### TC-I024: External port uses DefaultServiceType=LoadBalancer
 
-- **Requirement:** REQ-K8S-130
+- **Requirement:** REQ-K8S-125
 - **Priority:** High
 - **Type:** Integration
-- **Given:** Config has `defaultServiceType="ClusterIP"` AND container has `providerHints.kubernetes.service.type="LoadBalancer"`
-- **When:** `Create` is called with Service creation enabled and ports defined
+- **Given:** Container has port `{containerPort: 8080, visibility: external}` AND config has `defaultServiceType="LoadBalancer"`
+- **When:** `Create` is called
 - **Then:** Service type is `LoadBalancer`
 
-### TC-I025: Service not created when providerHints explicitly disables it
-
-- **Requirement:** REQ-K8S-140
-- **Priority:** High
-- **Type:** Integration
-- **Given:** Config has `createService=true` AND container has `providerHints.kubernetes.service.enabled=false`
-- **When:** `Create` is called
-- **Then:** No Service is created (providerHints overrides config)
-
-### TC-I026: Service not created by default
+### TC-I025: All ports visibility=none produces no Service
 
 - **Requirement:** REQ-K8S-150
 - **Priority:** High
 - **Type:** Integration
-- **Given:** Config has `createService=false` (default) AND no `providerHints` override AND container has ports
+- **Given:** Container has ports with `visibility=none`
 - **When:** `Create` is called
 - **Then:** No Service is created
 
-### TC-I027: Service carries DCM labels
+### TC-I026: No ports produces no Service
+
+- **Requirement:** REQ-K8S-150
+- **Priority:** High
+- **Type:** Integration
+- **Given:** Container has no `network.ports`
+- **When:** `Create` is called
+- **Then:** No Service is created AND Deployment is created successfully
+
+### TC-I027: Service carries DCM labels with internal visibility
 
 - **Requirement:** REQ-K8S-270
 - **Priority:** High
 - **Type:** Integration
-- **Given:** Container with id `"abc-123"` AND Service creation enabled
+- **Given:** Container with id `"abc-123"` AND port with `visibility=internal`
 - **When:** `Create` is called
 - **Then:** Service has labels `managed-by=dcm`, `dcm-instance-id=abc-123`, `dcm-service-type=container`
 
-### TC-I072: Empty ports array treated as no ports for Service creation
+### TC-I074: External port uses DefaultServiceType=NodePort
 
-- **Requirement:** REQ-K8S-105 (see SC-005)
-- **Priority:** High
-- **Type:** Integration
-- **Given:** Config has `createService=true` AND container has `network.ports=[]` (explicit empty array)
-- **When:** `Create` is called
-- **Then:** An error is returned indicating ports are required for Service creation (same behaviour as no `network.ports` field) AND no Deployment is created
-
-### TC-I073: Service error via providerHints path with no ports
-
-- **Requirement:** REQ-K8S-105
-- **Priority:** High
-- **Type:** Integration
-- **Given:** Config has `createService=false` AND container has `providerHints.kubernetes.service.enabled=true` AND no `network.ports` defined
-- **When:** `Create` is called
-- **Then:** An error is returned indicating ports are required for Service creation AND no Deployment is created (operation is atomic — see SC-003)
-
-### TC-I074: NodePort service type via providerHints
-
-- **Requirement:** REQ-K8S-130
+- **Requirement:** REQ-K8S-125
 - **Priority:** Medium
 - **Type:** Integration
-- **Given:** Container has `providerHints.kubernetes.service.type="NodePort"` AND `network.ports` defined AND Service creation enabled
+- **Given:** Container has port `{containerPort: 8080, visibility: external}` AND config has `defaultServiceType="NodePort"`
 - **When:** `Create` is called
 - **Then:** Service type is `NodePort`
+
+### TC-I091: Mixed visibility — only non-none ports in Service
+
+- **Requirement:** REQ-K8S-100, REQ-K8S-110
+- **Priority:** High
+- **Type:** Integration
+- **Given:** Container has ports `[{containerPort: 8080, visibility: internal}, {containerPort: 9090, visibility: none}]`
+- **When:** `Create` is called
+- **Then:** Service is created with only port 8080 AND port 9090 is NOT in the Service
+
+### TC-I092: Mixed internal+external — external promotes Service type
+
+- **Requirement:** REQ-K8S-125
+- **Priority:** High
+- **Type:** Integration
+- **Given:** Container has ports `[{containerPort: 8080, visibility: internal}, {containerPort: 9090, visibility: external}]` AND config has `defaultServiceType="LoadBalancer"`
+- **When:** `Create` is called
+- **Then:** Service type is `LoadBalancer` AND both ports 8080 and 9090 are in the Service
+
+### TC-I093: GET infers internal when Service is ClusterIP
+
+- **Requirement:** REQ-K8S-220
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A Deployment with ports AND a ClusterIP Service exist
+- **When:** `Get` is called
+- **Then:** All ports in the Service have `visibility=internal`
+
+### TC-I094: GET infers external when Service is LoadBalancer
+
+- **Requirement:** REQ-K8S-220
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A Deployment with ports AND a LoadBalancer Service exist
+- **When:** `Get` is called
+- **Then:** All ports in the Service have `visibility=external`
+
+### TC-I095: GET infers none when no Service exists
+
+- **Requirement:** REQ-K8S-220
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A Deployment with ports exists but no Service
+- **When:** `Get` is called
+- **Then:** All ports have `visibility=none`
 
 ---
 
@@ -392,8 +419,8 @@ for full descriptions.
 - **Requirement:** REQ-K8S-260
 - **Priority:** High
 - **Type:** Integration
-- **Given:** Config has `namespace="production"`
-- **When:** `Create` is called with Service creation enabled
+- **Given:** Config has `namespace="production"` AND container has port with `visibility=internal`
+- **When:** `Create` is called
 - **Then:** Deployment is in `"production"` namespace AND Service is in `"production"` namespace
 
 ### TC-I081: Unexpected K8s API error produces internal store error
@@ -520,6 +547,15 @@ for full descriptions.
 - **Type:** Integration
 - **Given:** Containers exist in the namespace
 - **When:** `List` is called with `page_token="not-a-valid-token"`
+- **Then:** An error is returned indicating the page token is invalid (maps to 400 Bad Request at the handler level)
+
+### TC-I086: List returns error for negative page_token offset
+
+- **Requirement:** REQ-STR-050
+- **Priority:** Medium
+- **Type:** Integration
+- **Given:** Containers exist in the namespace
+- **When:** `List` is called with a `page_token` encoding a negative offset
 - **Then:** An error is returned indicating the page token is invalid (maps to 400 Bad Request at the handler level)
 
 ---
@@ -845,7 +881,7 @@ for full descriptions.
 - **Requirement:** REQ-REG-020
 - **Priority:** Medium
 - **Type:** Integration
-- **Transitively covers:** TC-U045 (Payload omits metadata when region and zone not configured), TC-U063 (Payload omits display_name when not configured)
+- **Transitively covers:** TC-U045 (Payload omits metadata when region and zone not configured), TC-U064 (Payload omits display_name when not configured)
 - **Given:** Provider config: `name="k8s-sp"`, `endpoint="https://sp.example.com"` with NO `display_name`, `region`, or `zone` configured
 - **When:** Registration is sent to the mock server
 - **Then:** Request body contains `name`, `service_type`, `endpoint`, `operations` AND `display_name`, `metadata.region_code`, and `metadata.zone` are absent from the payload
@@ -876,6 +912,15 @@ for full descriptions.
 - **Given:** The mock DCM registration server is permanently unreachable AND the registration client uses a short initial backoff (e.g., 10ms) with a capped maximum interval (e.g., 200ms)
 - **When:** Registration attempts fail repeatedly (e.g., 10+ attempts)
 - **Then:** The interval between consecutive attempts never exceeds the configured maximum cap AND the backoff pattern is exponential up to the cap
+
+### TC-I087: Done() channel closes after successful registration
+
+- **Requirement:** REQ-REG-030
+- **Priority:** Medium
+- **Type:** Integration
+- **Given:** A registrar with valid configuration and a mock DCM server that returns 200 OK
+- **When:** Registration completes successfully
+- **Then:** The `Done()` channel MUST close, signaling that the registration process has finished
 
 ---
 
@@ -910,7 +955,7 @@ for full descriptions.
 
 | Requirement    | Test Cases                          | Status  |
 |----------------|-------------------------------------|---------|
-| REQ-HTTP-010   | TC-I001, TC-I082                    | Covered |
+| REQ-HTTP-010   | TC-I001, TC-I082, TC-I085           | Covered |
 | REQ-HTTP-020   | TC-I002, TC-I003                    | Covered |
 | REQ-HTTP-030   | TC-I004, TC-I079                    | Covered |
 | REQ-HTTP-040   | TC-I005                             | Covered |
@@ -922,7 +967,7 @@ for full descriptions.
 | REQ-STR-020    | TC-I009                             | Covered |
 | REQ-STR-030    | TC-I028                             | Covered |
 | REQ-STR-040    | TC-I030, TC-I032                    | Covered |
-| REQ-STR-050    | TC-I034, TC-I035, TC-I078           | Covered |
+| REQ-STR-050    | TC-I034, TC-I035, TC-I078, TC-I086  | Covered |
 | REQ-STR-060    | TC-I036                             | Covered |
 | REQ-STR-070    | TC-I037, TC-I039                    | Covered |
 | REQ-STR-080    | TC-I081                             | Covered |
@@ -935,20 +980,17 @@ for full descriptions.
 | REQ-K8S-070    | TC-I015, TC-I018                    | Covered |
 | REQ-K8S-080    | TC-I016, TC-I018                    | Covered |
 | REQ-K8S-090    | TC-I017, TC-I018                    | Covered |
-| REQ-K8S-100    | TC-I019, TC-I020                    | Covered |
-| REQ-K8S-105    | TC-I021, TC-I072, TC-I073           | Covered |
-| REQ-K8S-110    | TC-I022                             | Covered |
+| REQ-K8S-100    | TC-I019, TC-I091, TC-I092           | Covered |
+| REQ-K8S-110    | TC-I022, TC-I091                    | Covered |
 | REQ-K8S-120    | TC-I023                             | Covered |
-| REQ-K8S-130    | TC-I024, TC-I074                    | Covered |
-| REQ-K8S-140    | TC-I025                             | Covered |
-| REQ-K8S-150    | TC-I026                             | Covered |
-| REQ-K8S-160    | TC-I020                             | Covered |
+| REQ-K8S-125    | TC-I024, TC-I074, TC-I092           | Covered |
+| REQ-K8S-150    | TC-I025, TC-I026                    | Covered |
 | REQ-K8S-170    | TC-I028, TC-I069                    | Covered |
 | REQ-K8S-180    | TC-I037                             | Covered |
 | REQ-K8S-190    | TC-I038                             | Covered |
 | REQ-K8S-200    | TC-I060 (E2E placeholder)           | Covered |
 | REQ-K8S-210    | TC-I061 (E2E placeholder)           | Covered |
-| REQ-K8S-220    | TC-I030, TC-I033, TC-I075, TC-I076, TC-I077 | Covered |
+| REQ-K8S-220    | TC-I030, TC-I033, TC-I075, TC-I076, TC-I077, TC-I093, TC-I094, TC-I095 | Covered |
 | REQ-K8S-230    | TC-I030 (implicit), TC-I062–I065    | Covered |
 | REQ-K8S-240    | TC-I031                             | Covered |
 | REQ-K8S-250    | TC-I034                             | Covered |
@@ -971,7 +1013,7 @@ for full descriptions.
 | REQ-MON-150    | TC-I048                             | Covered |
 | REQ-REG-010    | TC-I053                             | Covered |
 | REQ-REG-020    | TC-I054, TC-I068                    | Covered |
-| REQ-REG-030    | TC-I055, TC-I083, TC-I084           | Covered |
+| REQ-REG-030    | TC-I055, TC-I083, TC-I084, TC-I087  | Covered |
 | REQ-REG-031    | TC-I055                             | Covered |
 | REQ-REG-040    | TC-I056, TC-I080                    | Covered |
 | REQ-REG-050    | TC-I057                             | Covered |
@@ -986,7 +1028,7 @@ for full descriptions.
 | REQ-XC-LOG-010 | TC-I006, TC-I007                    | Covered |
 | REQ-XC-LOG-020 | TC-I006, TC-I007 (INFO), TC-I057 (ERROR) | Covered |
 
-**Total:** 84 integration test cases (including 2 E2E placeholders) covering 74
+**Total:** 88 integration test cases (including 2 E2E placeholders) covering 71
 requirements at integration level.
 
 > Requirements not listed above (REQ-HTTP-050–070, REQ-HLT-010–040,

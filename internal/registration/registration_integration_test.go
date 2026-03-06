@@ -545,8 +545,8 @@ var _ = Describe("Registration Integration", func() {
 			"Done() channel should close after context cancellation")
 	})
 
-	// TC-I085: Done() channel closes after successful registration
-	It("Done() channel closes after successful registration (TC-I085)", func() {
+	// TC-I087: Done() channel closes after successful registration
+	It("Done() channel closes after successful registration (TC-I087)", func() {
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost && r.URL.Path == "/providers" {
 				w.WriteHeader(http.StatusOK)

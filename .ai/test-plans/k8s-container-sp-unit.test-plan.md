@@ -745,7 +745,7 @@ dedicated test class or `Describe` block.
 - **Then:** `metadata.region_code` and `metadata.zone` are absent from the payload
 - **Referenced by:** TC-I068 (registration without metadata integration test)
 
-#### TC-U063: Payload omits display_name when not configured
+#### TC-U064: Payload omits display_name when not configured
 
 - **Requirement:** REQ-REG-020
 - **Priority:** Medium
@@ -755,7 +755,7 @@ dedicated test class or `Describe` block.
 - **Then:** `display_name` is absent from the payload (nil pointer)
 - **Referenced by:** TC-I068 (registration without optional fields integration test)
 
-#### TC-U064: Composite handler delegates GetHealth to health sub-handler
+#### TC-U066: Composite handler delegates GetHealth to health sub-handler
 
 - **Requirement:** REQ-HLT-010
 - **Priority:** Medium
@@ -818,7 +818,7 @@ dedicated test class or `Describe` block.
 | REQ-MON-110   | TC-U038 (via TC-I066), TC-U039 (via TC-I067) | Covered |
 | REQ-MON-120   | TC-U040 (via TC-I043/I044), TC-U041 (via TC-I042) | Covered |
 | REQ-MON-150   | TC-U037 (via TC-I048)             | Covered |
-| REQ-REG-020   | TC-U043 (via TC-I054), TC-U044 (via TC-I054), TC-U045 (via TC-I068), TC-U062, TC-U063 (via TC-I068) | Covered |
+| REQ-REG-020   | TC-U043 (via TC-I054), TC-U044 (via TC-I054), TC-U045 (via TC-I068), TC-U062, TC-U064 (via TC-I068) | Covered |
 | REQ-XC-ID-010 | TC-U009 (id in path), TC-U024 (via TC-I009, metadata.name as K8s name) | Covered |
 | REQ-XC-ID-020 | TC-U013, TC-U046                  | Covered |
 | REQ-XC-ERR-010| TC-U022                           | Covered |

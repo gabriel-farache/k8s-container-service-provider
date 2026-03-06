@@ -309,6 +309,7 @@ components:
     ContainerImage:
       type: object
       description: Container image specification
+      additionalProperties: true
       required:
         - reference
       properties:
@@ -322,6 +323,7 @@ components:
     ContainerCpu:
       type: object
       description: CPU resource constraints
+      additionalProperties: true
       required:
         - min
         - max
@@ -338,6 +340,7 @@ components:
     ContainerMemory:
       type: object
       description: Memory resource constraints
+      additionalProperties: true
       required:
         - min
         - max
@@ -354,6 +357,7 @@ components:
     ContainerResources:
       type: object
       description: CPU and memory resource constraints
+      additionalProperties: true
       required:
         - cpu
         - memory
@@ -366,6 +370,7 @@ components:
     ContainerEnvVar:
       type: object
       description: Environment variable definition
+      additionalProperties: true
       required:
         - name
         - value
@@ -380,6 +385,7 @@ components:
     ContainerProcess:
       type: object
       description: Container process configuration
+      additionalProperties: true
       properties:
         command:
           type: array
@@ -400,20 +406,35 @@ components:
     ContainerPort:
       type: object
       description: Container port definition
+      additionalProperties: true
       required:
         - container_port
+        - visibility
       properties:
         container_port:
           type: integer
           description: Port number inside container
           minimum: 1
           maximum: 65535
+        visibility:
+          type: string
+          description: |
+            How this port is exposed to consumers.
+            - none: Port is not exposed outside the container process
+            - internal: Exposed to the host or cluster network
+              (e.g., Docker -p, Kubernetes ClusterIP Service)
+            - external: Reachable from outside the host/cluster
+              (e.g., OpenShift Route, Kubernetes Ingress/LoadBalancer)
+          enum:
+            - none
+            - internal
+            - external
+          example: internal
 
     ContainerNetwork:
       type: object
       description: Network configuration
-      required:
-        - ports
+      additionalProperties: true
       properties:
         ip:
           type: string
@@ -445,36 +466,6 @@ components:
           type: string
           readOnly: true
           description: Kubernetes namespace where resources were created
-
-    KubernetesServiceHints:
-      type: object
-      description: Kubernetes Service configuration hints
-      properties:
-        enabled:
-          type: boolean
-          description: Override SP default (true to create, false to skip)
-        type:
-          type: string
-          description: Service type (ClusterIP, NodePort, LoadBalancer)
-          enum: [ClusterIP, NodePort, LoadBalancer]
-
-    KubernetesProviderHints:
-      type: object
-      description: Kubernetes-specific provider hints
-      properties:
-        service:
-          $ref: '#/components/schemas/KubernetesServiceHints'
-
-    ProviderHints:
-      type: object
-      description: |
-        Optional provider-specific configuration.
-        Providers use hints they recognize and ignore unknown hints.
-      properties:
-        kubernetes:
-          $ref: '#/components/schemas/KubernetesProviderHints'
-      additionalProperties:
-        type: object
 
     Container:
       type: object
@@ -518,8 +509,6 @@ components:
           $ref: '#/components/schemas/ContainerProcess'
         network:
           $ref: '#/components/schemas/ContainerNetwork'
-        provider_hints:
-          $ref: '#/components/schemas/ProviderHints'
         status:
           readOnly: true
           allOf:

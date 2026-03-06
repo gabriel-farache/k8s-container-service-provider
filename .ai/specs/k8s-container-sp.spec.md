@@ -473,14 +473,11 @@ topic 5).
 | REQ-K8S-070 | When `process.args` is provided, it MUST be mapped to the container spec args | MUST | |
 | REQ-K8S-080 | When `process.env` is provided, each entry MUST be mapped to a K8s EnvVar | MUST | |
 | REQ-K8S-090 | When `network.ports` is provided, each port MUST be mapped to a container port in the Deployment | MUST | |
-| REQ-K8S-100 | When Service creation is enabled AND the container has ports defined, a Service MUST be created exposing all defined ports | MUST | SC-005 |
-| REQ-K8S-105 | When Service creation is enabled but no `network.ports` are defined, the SP MUST return 400 Bad Request | MUST | SC-003, SC-005 |
-| REQ-K8S-110 | The Service MUST include all ports from `network.ports[]` as a single resource | MUST | |
-| REQ-K8S-120 | The Service type MUST default to the configured `defaultServiceType` | MUST | |
-| REQ-K8S-130 | Per-container Service configuration MUST be overridable via `providerHints.kubernetes.service` | MUST | |
-| REQ-K8S-140 | When `providerHints.kubernetes.service.enabled` is explicitly false, no Service MUST be created | MUST | |
-| REQ-K8S-150 | When `createService=false` (default) and no providerHints override enables it, no Service MUST be created | MUST | DD-080 |
-| REQ-K8S-160 | `providerHints.kubernetes.service.enabled` MUST override the SP-level `createService` configuration | MUST | |
+| REQ-K8S-100 | When any port has `visibility` != `none`, a Service MUST be created including all non-none ports | MUST | SC-005 |
+| REQ-K8S-110 | All non-none ports MUST be included in a single Service resource | MUST | |
+| REQ-K8S-120 | When all non-none ports have `visibility=internal`, the Service type MUST be ClusterIP | MUST | |
+| REQ-K8S-125 | When any port has `visibility=external`, the Service type MUST be the configured `defaultServiceType` | MUST | |
+| REQ-K8S-150 | When all ports have `visibility=none` (or no ports exist), no Service MUST be created | MUST | |
 | REQ-K8S-170 | The SP MUST return a conflict error if a Deployment with the same `metadata.name` already exists in the configured namespace | MUST | SC-001 |
 | REQ-K8S-180 | Delete MUST remove the Deployment (cascading to Pods) and associated Service | MUST | |
 | REQ-K8S-190 | Delete MUST succeed even if no Service exists for the container | MUST | |
@@ -523,8 +520,7 @@ topic 5).
 |------------|---------|---------|-------------|
 | kubernetes.namespace | SP_K8S_NAMESPACE | default | Namespace for all managed resources |
 | kubernetes.kubeconfig | SP_K8S_KUBECONFIG | (auto) | Path to kubeconfig (empty = in-cluster) |
-| kubernetes.createService | SP_K8S_CREATE_SERVICE | false | Create K8s Service per container |
-| kubernetes.defaultServiceType | SP_K8S_DEFAULT_SVC_TYPE | ClusterIP | Default Service type |
+| kubernetes.defaultServiceType | SP_K8S_DEFAULT_SVC_TYPE | ClusterIP | Default Service type when `external` visibility is used |
 
 #### Acceptance Criteria - Store Interface
 
@@ -672,67 +668,63 @@ topic 5).
 - **When** the Deployment is created
 - **Then** the container spec `ports` MUST contain {ContainerPort: 8080}
 
-##### AC-K8S-100: Service creation - when enabled
+##### AC-K8S-100: Service creation - visibility-driven
 
 - **Validates:** REQ-K8S-100
-- **Given** Service creation is enabled (via config or providerHints)
-- **And** the container has network.ports defined
+- **Given** a container has ports with `visibility` != `none`
 - **When** the container is created
-- **Then** a single Service MUST be created exposing all defined ports
+- **Then** a single Service MUST be created including all non-none ports
 
-##### AC-K8S-110: Service creation - error when no ports defined
-
-- **Validates:** REQ-K8S-105
-- **Given** Service creation is explicitly enabled (via config or providerHints)
-- **And** the container has no `network.ports` defined
-- **When** the container creation is attempted
-- **Then** the SP MUST return a 400 Bad Request with an RFC 7807 error body indicating that ports are required for Service creation
-
-##### AC-K8S-120: Service creation - all ports in single Service
+##### AC-K8S-110: Service creation - all non-none ports in single Service
 
 - **Validates:** REQ-K8S-110
-- **Given** a container with network.ports=[{containerPort: 8080}, {containerPort: 9090}]
+- **Given** a container with ports [{containerPort: 8080, visibility: internal}, {containerPort: 9090, visibility: internal}]
 - **When** the Service is created
 - **Then** the Service MUST have two port entries (8080 and 9090)
 - **And** only one Service resource MUST be created
 
-##### AC-K8S-130: Service type - default
+##### AC-K8S-120: Service type - internal-only ports
 
 - **Validates:** REQ-K8S-120
-- **Given** SP configuration has defaultServiceType="ClusterIP"
-- **And** no providerHints override is specified
+- **Given** all non-none ports have `visibility=internal`
 - **When** the Service is created
 - **Then** the Service type MUST be ClusterIP
 
-##### AC-K8S-140: Service type - providerHints override
+##### AC-K8S-125: Service type - external port uses defaultServiceType
 
-- **Validates:** REQ-K8S-130
-- **Given** a container with providerHints.kubernetes.service.type="LoadBalancer"
+- **Validates:** REQ-K8S-125
+- **Given** at least one port has `visibility=external`
+- **And** SP configuration has defaultServiceType="LoadBalancer"
 - **When** the Service is created
 - **Then** the Service type MUST be LoadBalancer
 
-##### AC-K8S-150: Service creation - disabled via providerHints
-
-- **Validates:** REQ-K8S-140
-- **Given** a container with providerHints.kubernetes.service.enabled=false
-- **When** the container is created
-- **Then** no Service MUST be created for that container
-
-##### AC-K8S-160: Service creation - disabled by default
+##### AC-K8S-150: Service creation - all ports none
 
 - **Validates:** REQ-K8S-150
-- **Given** SP configuration has createService=false (default)
-- **And** no providerHints.kubernetes.service.enabled=true is specified
+- **Given** all ports have `visibility=none` (or no ports exist)
 - **When** the container is created
 - **Then** no Service MUST be created
 
-##### AC-K8S-170: Service creation - providerHints overrides SP config
+##### AC-K8S-155: Visibility inference on GET - internal
 
-- **Validates:** REQ-K8S-160
-- **Given** SP configuration has createService=false
-- **And** a container with providerHints.kubernetes.service.enabled=true
-- **When** the container is created
-- **Then** a Service MUST be created
+- **Validates:** REQ-K8S-220
+- **Given** a container has a ClusterIP Service
+- **When** GET is called
+- **Then** ports in the Service MUST have `visibility=internal`
+
+##### AC-K8S-156: Visibility inference on GET - external
+
+- **Validates:** REQ-K8S-220
+- **Given** a container has a LoadBalancer Service
+- **When** GET is called
+- **Then** ports in the Service MUST have `visibility=external`
+
+##### AC-K8S-157: Visibility inference on GET - none
+
+- **Validates:** REQ-K8S-220
+- **Given** a container has no Service
+- **When** GET is called
+- **Then** all ports MUST have `visibility=none`
 
 ##### AC-K8S-180: Deployment conflict detection
 
@@ -1263,7 +1255,6 @@ All configuration is loaded from environment variables.
 | server.shutdownTimeout | SP_SERVER_SHUTDOWN_TIMEOUT | 15s | No | 1 |
 | kubernetes.namespace | SP_K8S_NAMESPACE | default | No | 4 |
 | kubernetes.kubeconfig | SP_K8S_KUBECONFIG | (auto) | No | 4 |
-| kubernetes.createService | SP_K8S_CREATE_SERVICE | false | No | 4 |
 | kubernetes.defaultServiceType | SP_K8S_DEFAULT_SVC_TYPE | ClusterIP | No | 4 |
 | nats.url | SP_NATS_URL | - | Yes | 5 |
 | provider.name | SP_PROVIDER_NAME | - | Yes | 5, 6 |
@@ -1353,15 +1344,18 @@ Note ecosystem inconsistency (KubeVirt SP uses `"ok"`).
 
 **Related requirements:** REQ-HLT-020
 
-### DD-080: Service creation default changed to false
+### DD-080: Service creation driven by port visibility
 
-**Decision:** Default for `kubernetes.createService` changed from `true` (as in
-the enhancement) to `false`.
+**Decision:** Service creation is derived from per-port `visibility` enum
+(`none`, `internal`, `external`) defined upstream in the catalog-manager
+`ContainerPort` schema. The `createService` config and `providerHints` mechanism
+are removed.
 
-**Rationale:** Requiring explicit enablement avoids silent assumptions about
-Service creation and makes the behavior opt-in rather than opt-out.
+**Rationale:** Upstream alignment. The catalog-manager defines what DCM sends;
+this provider must accept exactly that. Per-port visibility is more expressive
+than a boolean toggle and removes the need for provider-specific hints.
 
-**Related requirements:** REQ-K8S-150
+**Related requirements:** REQ-K8S-100, REQ-K8S-120, REQ-K8S-125, REQ-K8S-150
 
 ### DD-090: Memory unit conversion simplification
 
@@ -1408,12 +1402,10 @@ A Create request MUST be rejected with 400 Bad Request when
 `resources.memory.min > resources.memory.max`. The API treats this as an
 invalid argument.
 
-### SC-003: REQ-K8S-105 atomicity
+### SC-003: Service creation atomicity
 
-**Related requirements:** REQ-K8S-105
+**Related requirements:** REQ-K8S-100
 
-When Service creation is required but fails validation (e.g., no ports
-defined), the entire Create operation MUST be atomic: no Deployment is created.
 If the Service fails to create after the Deployment was already applied, the
 Deployment MUST be rolled back (deleted).
 
@@ -1429,11 +1421,10 @@ be rejected with 400 Bad Request.
 
 ### SC-005: Empty `network.ports: []`
 
-**Related requirements:** REQ-K8S-100, REQ-K8S-105
+**Related requirements:** REQ-K8S-100, REQ-K8S-150
 
 An explicit empty array `network.ports: []` MUST be treated identically to the
-field being absent. Specifically, Service creation logic MUST NOT consider empty
-ports as "ports defined."
+field being absent. No Service is created when there are no ports.
 
 ### SC-006: Invalid `page_token`
 
