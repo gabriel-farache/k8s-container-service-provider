@@ -2,7 +2,6 @@ package apiserver
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -37,20 +36,8 @@ type Server struct {
 // validation middleware.
 func newBadRequestHandler(logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
-		status := int32(http.StatusBadRequest)
 		detail := scrubValidationError(err)
-		resp := v1alpha1.Error{
-			Type:     v1alpha1.INVALIDARGUMENT,
-			Title:    "Bad Request",
-			Status:   util.Ptr(status),
-			Detail:   util.Ptr(detail),
-			Instance: requestInstance(r),
-		}
-		w.Header().Set("Content-Type", "application/problem+json")
-		w.WriteHeader(http.StatusBadRequest)
-		if encErr := json.NewEncoder(w).Encode(resp); encErr != nil {
-			logger.Error("failed to encode error response", "error", encErr)
-		}
+		rfc7807.WriteResponse(w, logger, http.StatusBadRequest, v1alpha1.INVALIDARGUMENT, "Bad Request", detail, requestInstance(r))
 	}
 }
 
@@ -66,19 +53,7 @@ func NewRequestErrorHandler(logger *slog.Logger) func(http.ResponseWriter, *http
 func NewResponseErrorHandler(logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		logger.Error("strict handler response error", "error", err)
-		status := int32(http.StatusInternalServerError)
-		resp := v1alpha1.Error{
-			Type:     v1alpha1.INTERNAL,
-			Title:    rfc7807.InternalTitle,
-			Status:   util.Ptr(status),
-			Detail:   util.Ptr(rfc7807.InternalDetail),
-			Instance: requestInstance(r),
-		}
-		w.Header().Set("Content-Type", "application/problem+json")
-		w.WriteHeader(http.StatusInternalServerError)
-		if encErr := json.NewEncoder(w).Encode(resp); encErr != nil {
-			logger.Error("failed to encode error response", "error", encErr)
-		}
+		rfc7807.WriteResponse(w, logger, http.StatusInternalServerError, v1alpha1.INTERNAL, rfc7807.InternalTitle, rfc7807.InternalDetail, requestInstance(r))
 	}
 }
 
@@ -221,19 +196,7 @@ func rfc7807RecoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Hand
 						return
 					}
 
-					status := int32(http.StatusInternalServerError)
-					resp := v1alpha1.Error{
-						Type:     v1alpha1.INTERNAL,
-						Title:    rfc7807.InternalTitle,
-						Status:   util.Ptr(status),
-						Detail:   util.Ptr(rfc7807.InternalDetail),
-						Instance: requestInstance(r),
-					}
-					w.Header().Set("Content-Type", "application/problem+json")
-					w.WriteHeader(http.StatusInternalServerError)
-					if encErr := json.NewEncoder(w).Encode(resp); encErr != nil {
-						logger.Error("failed to encode recovery response", "error", encErr)
-					}
+					rfc7807.WriteResponse(w, logger, http.StatusInternalServerError, v1alpha1.INTERNAL, rfc7807.InternalTitle, rfc7807.InternalDetail, requestInstance(r))
 				}
 			}()
 			next.ServeHTTP(sw, r)
@@ -337,19 +300,7 @@ func New(cfg *config.Config, logger *slog.Logger, handler oapigen.ServerInterfac
 	// generated router sees them. Chi treats /containers/ as a distinct
 	// path from /containers/{container_id}, so without this route it would 404.
 	emptyIDHandler := func(w http.ResponseWriter, r *http.Request) {
-		status := int32(http.StatusBadRequest)
-		resp := v1alpha1.Error{
-			Type:     v1alpha1.INVALIDARGUMENT,
-			Title:    "Bad Request",
-			Status:   util.Ptr(status),
-			Detail:   util.Ptr("container_id is required and cannot be empty"),
-			Instance: requestInstance(r),
-		}
-		w.Header().Set("Content-Type", "application/problem+json")
-		w.WriteHeader(http.StatusBadRequest)
-		if encErr := json.NewEncoder(w).Encode(resp); encErr != nil {
-			logger.Error("failed to encode error response", "error", encErr)
-		}
+		rfc7807.WriteResponse(w, logger, http.StatusBadRequest, v1alpha1.INVALIDARGUMENT, "Bad Request", "container_id is required and cannot be empty", requestInstance(r))
 	}
 	postPath, pathErr := v1alpha1.PostPath()
 	if pathErr != nil {
