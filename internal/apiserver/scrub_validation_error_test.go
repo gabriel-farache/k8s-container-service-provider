@@ -98,7 +98,57 @@ var _ = Describe("scrubValidationError", func() {
 		Expect(result).NotTo(ContainSubstring("strconv"))
 	})
 
-	// Branch 4: Unknown error type (generic fallback)
+	// Branch 4: RequiredParamError
+	It("returns scrubbed message for RequiredParamError", func() {
+		paramErr := &oapigen.RequiredParamError{
+			ParamName: "page_token",
+		}
+		result := apiserver.ScrubValidationError(paramErr)
+		Expect(result).To(Equal(`missing required parameter "page_token"`))
+	})
+
+	// Branch 5: RequiredHeaderError
+	It("returns scrubbed message for RequiredHeaderError", func() {
+		headerErr := &oapigen.RequiredHeaderError{
+			ParamName: "X-Request-ID",
+			Err:       errors.New("header missing"),
+		}
+		result := apiserver.ScrubValidationError(headerErr)
+		Expect(result).To(Equal(`missing required header "X-Request-ID"`))
+	})
+
+	// Branch 6: UnescapedCookieParamError
+	It("returns scrubbed message for UnescapedCookieParamError", func() {
+		cookieErr := &oapigen.UnescapedCookieParamError{
+			ParamName: "session_id",
+			Err:       errors.New("unescape failed"),
+		}
+		result := apiserver.ScrubValidationError(cookieErr)
+		Expect(result).To(Equal(`invalid cookie parameter "session_id"`))
+	})
+
+	// Branch 7: UnmarshalingParamError
+	It("returns scrubbed message for UnmarshalingParamError", func() {
+		unmarshalErr := &oapigen.UnmarshalingParamError{
+			ParamName: "filter",
+			Err:       fmt.Errorf("json: cannot unmarshal string"),
+		}
+		result := apiserver.ScrubValidationError(unmarshalErr)
+		Expect(result).To(Equal(`invalid value for parameter "filter"`))
+		Expect(result).NotTo(ContainSubstring("json:"))
+	})
+
+	// Branch 8: TooManyValuesForParamError
+	It("returns scrubbed message for TooManyValuesForParamError", func() {
+		tooManyErr := &oapigen.TooManyValuesForParamError{
+			ParamName: "sort",
+			Count:     3,
+		}
+		result := apiserver.ScrubValidationError(tooManyErr)
+		Expect(result).To(Equal(`too many values for parameter "sort"`))
+	})
+
+	// Branch 9: Unknown error type (generic fallback)
 	It("returns generic message for unknown error types", func() {
 		result := apiserver.ScrubValidationError(errors.New("something unexpected"))
 		Expect(result).To(Equal("invalid request"))

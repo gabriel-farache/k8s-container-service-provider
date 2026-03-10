@@ -128,6 +128,31 @@ func scrubValidationError(err error) string {
 		return fmt.Sprintf("invalid format for parameter %q", paramErr.ParamName)
 	}
 
+	var reqParamErr *oapigen.RequiredParamError
+	if errors.As(err, &reqParamErr) {
+		return fmt.Sprintf("missing required parameter %q", reqParamErr.ParamName)
+	}
+
+	var reqHeaderErr *oapigen.RequiredHeaderError
+	if errors.As(err, &reqHeaderErr) {
+		return fmt.Sprintf("missing required header %q", reqHeaderErr.ParamName)
+	}
+
+	var cookieErr *oapigen.UnescapedCookieParamError
+	if errors.As(err, &cookieErr) {
+		return fmt.Sprintf("invalid cookie parameter %q", cookieErr.ParamName)
+	}
+
+	var unmarshalErr *oapigen.UnmarshalingParamError
+	if errors.As(err, &unmarshalErr) {
+		return fmt.Sprintf("invalid value for parameter %q", unmarshalErr.ParamName)
+	}
+
+	var tooManyErr *oapigen.TooManyValuesForParamError
+	if errors.As(err, &tooManyErr) {
+		return fmt.Sprintf("too many values for parameter %q", tooManyErr.ParamName)
+	}
+
 	// Unknown error type — return a generic message to avoid leaking internals.
 	return genericMsg
 }

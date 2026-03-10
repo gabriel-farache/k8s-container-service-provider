@@ -348,6 +348,51 @@ construction, debounce, indexer functions, registration payload builders) are
 - **When:** The error response is returned
 - **Then:** The `instance` field MUST be set to the request path
 
+### TC-U073: scrubValidationError handles RequiredParamError
+
+- **Requirement:** REQ-HTTP-090
+- **Priority:** Medium
+- **Type:** Unit
+- **Given:** A `RequiredParamError` with `ParamName="page_token"`
+- **When:** `scrubValidationError` is called
+- **Then:** The result is `missing required parameter "page_token"`
+
+### TC-U074: scrubValidationError handles RequiredHeaderError
+
+- **Requirement:** REQ-HTTP-090
+- **Priority:** Medium
+- **Type:** Unit
+- **Given:** A `RequiredHeaderError` with `ParamName="X-Request-ID"`
+- **When:** `scrubValidationError` is called
+- **Then:** The result is `missing required header "X-Request-ID"`
+
+### TC-U075: scrubValidationError handles UnescapedCookieParamError
+
+- **Requirement:** REQ-HTTP-090
+- **Priority:** Medium
+- **Type:** Unit
+- **Given:** An `UnescapedCookieParamError` with `ParamName="session_id"`
+- **When:** `scrubValidationError` is called
+- **Then:** The result is `invalid cookie parameter "session_id"`
+
+### TC-U076: scrubValidationError handles UnmarshalingParamError
+
+- **Requirement:** REQ-HTTP-090
+- **Priority:** Medium
+- **Type:** Unit
+- **Given:** An `UnmarshalingParamError` with `ParamName="filter"`
+- **When:** `scrubValidationError` is called
+- **Then:** The result is `invalid value for parameter "filter"` AND does not contain raw unmarshal error
+
+### TC-U077: scrubValidationError handles TooManyValuesForParamError
+
+- **Requirement:** REQ-HTTP-090
+- **Priority:** Medium
+- **Type:** Unit
+- **Given:** A `TooManyValuesForParamError` with `ParamName="sort"` and `Count=3`
+- **When:** `scrubValidationError` is called
+- **Then:** The result is `too many values for parameter "sort"`
+
 ---
 
 ## 4 · Status Reconciliation Logic
@@ -829,8 +874,8 @@ dedicated test class or `Describe` block.
 | Requirement   | Test Cases                        | Status  |
 |---------------|-----------------------------------|---------|
 | REQ-HTTP-050  | TC-U002, TC-U004                  | Covered |
-| REQ-HTTP-070  | TC-I080, TC-I086, TC-I087 (integration)  | Covered |
-| REQ-HTTP-090  | TC-U057 (via TC-I008), TC-U058 (via TC-I008), TC-U067 (via TC-U014) | Covered |
+| REQ-HTTP-070  | TC-I080, TC-I086, TC-I087, TC-I102 (integration)  | Covered |
+| REQ-HTTP-090  | TC-U057 (via TC-I008), TC-U058 (via TC-I008), TC-U067 (via TC-U014), TC-U073–TC-U077 | Covered |
 | REQ-HTTP-091  | TC-U070                           | Covered |
 | REQ-HLT-010   | TC-U005                           | Covered |
 | REQ-HLT-020   | TC-U005, TC-U006                  | Covered |
@@ -880,7 +925,7 @@ dedicated test class or `Describe` block.
 | REQ-XC-CFG-020| TC-U063                           | Covered |
 | REQ-MON-170   | TC-U072 (pending implementation)  | Pending |
 
-**Total:** 67 test case IDs (2 retired: TC-U065, TC-U066) — 36 in behavioural
+**Total:** 72 test case IDs (2 retired: TC-U065, TC-U066) — 41 in behavioural
 test classes, 31 in the utility index (tested transitively through higher-level
 behavioural and integration tests).
 
