@@ -308,6 +308,11 @@ func New(cfg *config.Config, logger *slog.Logger, handler oapigen.ServerInterfac
 	} else {
 		r.Get(postPath+"/", emptyIDHandler)
 		r.Delete(postPath+"/", emptyIDHandler)
+
+		// Serve health at the resource-relative path for DCM health check
+		// compatibility. DCM constructs health URLs as endpoint + "/health",
+		// and the registered endpoint is {base}/api/v1alpha1/containers.
+		r.Get(postPath+"/health", handler.GetHealth)
 	}
 
 	httpHandler := oapigen.HandlerWithOptions(handler, oapigen.ChiServerOptions{

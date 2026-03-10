@@ -175,6 +175,16 @@ for full descriptions.
 - **Then:** Recovery middleware MUST be outermost to catch panics from any inner middleware
 - **Note:** This is an architectural guarantee verified by the existing panic recovery tests (TC-I080). The ordering is enforced by code inspection and the fact that handler panics are correctly caught.
 
+### TC-I103: Health endpoint at resource-relative path
+
+- **Requirement:** REQ-HLT-010
+- **AC:** AC-HLT-050
+- **Priority:** High
+- **Type:** Integration
+- **Given:** The server is running
+- **When:** `GET /api/v1alpha1/containers/health` is called
+- **Then:** The response MUST be HTTP 200 with a valid Health JSON body containing `status`, `type`, `path`, `version`, and `uptime` fields
+
 ---
 
 ## 2 · K8s Store — Create Operations
@@ -1031,6 +1041,7 @@ for full descriptions.
 | REQ-HTTP-080   | TC-I006, TC-I007                    | Covered |
 | REQ-HTTP-090   | TC-I008                             | Covered |
 | REQ-HTTP-110   | TC-I098                             | Covered |
+| REQ-HLT-010    | TC-I103                             | Covered |
 | REQ-API-070    | TC-I075, TC-I076                    | Covered |
 | REQ-API-151    | TC-I037                             | Covered |
 | REQ-API-180    | TC-I081                             | Covered |

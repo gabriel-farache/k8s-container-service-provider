@@ -820,6 +820,31 @@ var _ = Describe("HTTP Server", func() {
 		Eventually(ctxCancelled).WithTimeout(2 * time.Second).Should(BeClosed())
 	})
 
+	// TC-I103: Health endpoint at resource-relative path
+	It("serves health at /api/v1alpha1/containers/health (TC-I103)", func() {
+		addr, cancel, errCh := startServer(defaultConfig(), nil, nil)
+		defer func() {
+			cancel()
+			Eventually(errCh).WithTimeout(10 * time.Second).Should(Receive())
+		}()
+
+		resp, err := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
+		Expect(err).NotTo(HaveOccurred())
+		defer resp.Body.Close()
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+		body, err := io.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+
+		var healthJSON map[string]any
+		Expect(json.Unmarshal(body, &healthJSON)).To(Succeed())
+		Expect(healthJSON).To(HaveKey("status"))
+		Expect(healthJSON).To(HaveKey("type"))
+		Expect(healthJSON).To(HaveKey("path"))
+		Expect(healthJSON).To(HaveKey("version"))
+		Expect(healthJSON).To(HaveKey("uptime"))
+	})
+
 	// TC-I097: Request logging — error request
 	// Note: the default startServer uses a nil-repo handler, so
 	// GetContainer panics. With recovery outermost, the panic is

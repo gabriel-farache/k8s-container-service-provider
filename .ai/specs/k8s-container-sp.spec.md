@@ -243,7 +243,7 @@ readiness vs liveness distinction (future enhancement).
 
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
-| REQ-HLT-010 | The SP MUST expose `GET /health` and return HTTP 200 OK | MUST | |
+| REQ-HLT-010 | The SP MUST expose `GET /health` and return HTTP 200 OK. The health endpoint MUST also be accessible at the resource-relative path (`{resource_base_path}/health`, i.e., `/api/v1alpha1/containers/health`) for DCM health check compatibility | MUST | |
 | REQ-HLT-020 | The health response MUST return a JSON body conforming to the Health schema with `status`, `type`, `path`, `version`, and `uptime` fields | MUST | DD-070 |
 | REQ-HLT-030 | The response MUST set `Content-Type: application/json` | MUST | |
 | REQ-HLT-040 | The health endpoint MUST be lightweight and return quickly, suitable for 10-second polling intervals (no K8s API calls, no DB queries) | MUST | |
@@ -282,6 +282,13 @@ readiness vs liveness distinction (future enhancement).
 - **Given** the DCM control plane polls the health endpoint
 - **When** the request is processed
 - **Then** the handler MUST NOT perform expensive operations (no K8s API calls, no DB queries)
+
+##### AC-HLT-050: Health endpoint at resource-relative path
+
+- **Validates:** REQ-HLT-010
+- **Given** the HTTP server is running
+- **When** a GET request is made to `/api/v1alpha1/containers/health`
+- **Then** the response MUST be HTTP 200 OK with the same Health JSON body as `/health`
 
 #### Dependencies
 
@@ -1411,15 +1418,20 @@ Keeps a clean separation between HTTP layer and storage/K8s layer.
 
 ### DD-050: Health endpoint path
 
-**Decision:** Health endpoint is at `/health`, aligned with the enhancement doc.
+**Decision:** Health is served at both `/health` (root, for direct access and
+readiness probing) and `/api/v1alpha1/containers/health` (resource-relative, for
+DCM health check integration which derives the health URL as
+`registered_endpoint + '/health'`).
 
 **Rationale:** The health endpoint is an infrastructure concern polled by the DCM
 control plane and is not part of the versioned resource API. The OpenAPI spec
 uses explicit full paths (e.g., `/api/v1alpha1/containers`) instead of a shared
 server prefix, allowing `/health` to live at the root alongside versioned
-resource endpoints.
+resource endpoints. The resource-relative path is needed because DCM's
+`healthcheck/monitor.go` constructs health URLs as `endpoint + "/health"`, and
+the registered endpoint is `{base}/api/v1alpha1/containers`.
 
-**Related requirements:** REQ-HTTP-020
+**Related requirements:** REQ-HTTP-020, REQ-HLT-010
 
 ### DD-060: NATS for messaging
 
