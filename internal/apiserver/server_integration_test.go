@@ -727,7 +727,8 @@ var _ = Describe("HTTP Server", func() {
 		handler := apiserver.NewResponseErrorHandler(logger)
 
 		w := httptest.NewRecorder()
-		handler(w, nil, fmt.Errorf("database connection lost"))
+		req := httptest.NewRequest(http.MethodGet, "/some/path", nil)
+		handler(w, req, fmt.Errorf("database connection lost"))
 
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		Expect(w.Header().Get("Content-Type")).To(Equal("application/problem+json"))
@@ -738,6 +739,7 @@ var _ = Describe("HTTP Server", func() {
 		Expect(problemJSON).To(HaveKeyWithValue("title", "Internal Server Error"))
 		Expect(problemJSON["status"]).To(BeNumerically("==", 500))
 		Expect(problemJSON).To(HaveKeyWithValue("detail", "an unexpected error occurred"))
+		Expect(problemJSON).To(HaveKeyWithValue("instance", "/some/path"))
 
 		// Must not leak the raw error message.
 		bodyStr := w.Body.String()

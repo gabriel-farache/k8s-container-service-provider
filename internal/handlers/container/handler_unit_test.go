@@ -820,7 +820,7 @@ var _ = Describe("Container API Handlers", func() {
 					errResp, ok := resp.(oapigen.CreateContainer500ApplicationProblemPlusJSONResponse)
 					Expect(ok).To(BeTrue(), "expected 500 response")
 					Expect(errResp.Type).To(Equal(v1alpha1.INTERNAL))
-					Expect(*errResp.Detail).To(Equal("An internal error occurred"))
+					Expect(*errResp.Detail).To(Equal("an unexpected error occurred"))
 					Expect(*errResp.Detail).NotTo(ContainSubstring("database connection lost"))
 				},
 			),
@@ -838,7 +838,7 @@ var _ = Describe("Container API Handlers", func() {
 					errResp, ok := resp.(oapigen.GetContainer500ApplicationProblemPlusJSONResponse)
 					Expect(ok).To(BeTrue(), "expected 500 response")
 					Expect(errResp.Type).To(Equal(v1alpha1.INTERNAL))
-					Expect(*errResp.Detail).To(Equal("An internal error occurred"))
+					Expect(*errResp.Detail).To(Equal("an unexpected error occurred"))
 					Expect(*errResp.Detail).NotTo(ContainSubstring("connection refused"))
 				},
 			),
@@ -856,7 +856,7 @@ var _ = Describe("Container API Handlers", func() {
 					errResp, ok := resp.(oapigen.DeleteContainer500ApplicationProblemPlusJSONResponse)
 					Expect(ok).To(BeTrue(), "expected 500 response")
 					Expect(errResp.Type).To(Equal(v1alpha1.INTERNAL))
-					Expect(*errResp.Detail).To(Equal("An internal error occurred"))
+					Expect(*errResp.Detail).To(Equal("an unexpected error occurred"))
 					Expect(*errResp.Detail).NotTo(ContainSubstring("disk I/O error"))
 				},
 			),
@@ -874,7 +874,7 @@ var _ = Describe("Container API Handlers", func() {
 					errResp, ok := resp.(oapigen.ListContainers500ApplicationProblemPlusJSONResponse)
 					Expect(ok).To(BeTrue(), "expected 500 response")
 					Expect(errResp.Type).To(Equal(v1alpha1.INTERNAL))
-					Expect(*errResp.Detail).To(Equal("An internal error occurred"))
+					Expect(*errResp.Detail).To(Equal("an unexpected error occurred"))
 					Expect(*errResp.Detail).NotTo(ContainSubstring("network timeout"))
 				},
 			),

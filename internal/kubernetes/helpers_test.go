@@ -224,4 +224,3 @@ func createFakeService(client kubernetes.Interface, namespace, name, instanceID 
 	_, err := client.CoreV1().Services(namespace).Create(context.Background(), svc, metav1.CreateOptions{})
 	return err
 }
-

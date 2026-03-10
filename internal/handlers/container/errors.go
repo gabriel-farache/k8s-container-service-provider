@@ -5,6 +5,7 @@ import (
 
 	v1alpha1 "github.com/dcm-project/k8s-container-service-provider/api/v1alpha1"
 	oapigen "github.com/dcm-project/k8s-container-service-provider/internal/api/server"
+	"github.com/dcm-project/k8s-container-service-provider/internal/rfc7807"
 	"github.com/dcm-project/k8s-container-service-provider/internal/store"
 )
 
@@ -35,10 +36,10 @@ func (h *Handler) mapCreateError(err error, requestPath string) oapigen.CreateCo
 	}
 
 	h.logger.Error("unexpected error in CreateContainer", "error", err)
-	detail := "An internal error occurred"
+	detail := rfc7807.InternalDetail
 	return oapigen.CreateContainer500ApplicationProblemPlusJSONResponse{
 		Type:     v1alpha1.INTERNAL,
-		Title:    "Internal error",
+		Title:    rfc7807.InternalTitle,
 		Detail:   &detail,
 		Instance: &requestPath,
 	}
@@ -57,10 +58,10 @@ func (h *Handler) mapGetError(err error, requestPath string) oapigen.GetContaine
 	}
 
 	h.logger.Error("unexpected error in GetContainer", "error", err)
-	detail := "An internal error occurred"
+	detail := rfc7807.InternalDetail
 	return oapigen.GetContainer500ApplicationProblemPlusJSONResponse{
 		Type:     v1alpha1.INTERNAL,
-		Title:    "Internal error",
+		Title:    rfc7807.InternalTitle,
 		Detail:   &detail,
 		Instance: &requestPath,
 	}
@@ -79,10 +80,10 @@ func (h *Handler) mapDeleteError(err error, requestPath string) oapigen.DeleteCo
 	}
 
 	h.logger.Error("unexpected error in DeleteContainer", "error", err)
-	detail := "An internal error occurred"
+	detail := rfc7807.InternalDetail
 	return oapigen.DeleteContainer500ApplicationProblemPlusJSONResponse{
 		Type:     v1alpha1.INTERNAL,
-		Title:    "Internal error",
+		Title:    rfc7807.InternalTitle,
 		Detail:   &detail,
 		Instance: &requestPath,
 	}
@@ -101,10 +102,10 @@ func (h *Handler) mapListError(err error, requestPath string) oapigen.ListContai
 	}
 
 	h.logger.Error("unexpected error in ListContainers", "error", err)
-	detail := "An internal error occurred"
+	detail := rfc7807.InternalDetail
 	return oapigen.ListContainers500ApplicationProblemPlusJSONResponse{
 		Type:     v1alpha1.INTERNAL,
-		Title:    "Internal error",
+		Title:    rfc7807.InternalTitle,
 		Detail:   &detail,
 		Instance: &requestPath,
 	}

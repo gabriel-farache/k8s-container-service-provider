@@ -14,6 +14,7 @@ import (
 	v1alpha1 "github.com/dcm-project/k8s-container-service-provider/api/v1alpha1"
 	oapigen "github.com/dcm-project/k8s-container-service-provider/internal/api/server"
 	"github.com/dcm-project/k8s-container-service-provider/internal/config"
+	"github.com/dcm-project/k8s-container-service-provider/internal/rfc7807"
 	"github.com/dcm-project/k8s-container-service-provider/internal/util"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -68,9 +69,9 @@ func NewResponseErrorHandler(logger *slog.Logger) func(http.ResponseWriter, *htt
 		status := int32(http.StatusInternalServerError)
 		resp := v1alpha1.Error{
 			Type:     v1alpha1.INTERNAL,
-			Title:    "Internal Server Error",
+			Title:    rfc7807.InternalTitle,
 			Status:   util.Ptr(status),
-			Detail:   util.Ptr("an unexpected error occurred"),
+			Detail:   util.Ptr(rfc7807.InternalDetail),
 			Instance: requestInstance(r),
 		}
 		w.Header().Set("Content-Type", "application/problem+json")
@@ -203,7 +204,7 @@ func (w *statusRecordingResponseWriter) Unwrap() http.ResponseWriter {
 func rfc7807RecoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			sw := &statusRecordingResponseWriter{ResponseWriter: w}
+			sw := &statusRecordingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 			defer func() {
 				if rec := recover(); rec != nil {
 					// http.ErrAbortHandler is a sentinel that tells
@@ -223,9 +224,9 @@ func rfc7807RecoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Hand
 					status := int32(http.StatusInternalServerError)
 					resp := v1alpha1.Error{
 						Type:     v1alpha1.INTERNAL,
-						Title:    "Internal Server Error",
+						Title:    rfc7807.InternalTitle,
 						Status:   util.Ptr(status),
-						Detail:   util.Ptr("an unexpected error occurred"),
+						Detail:   util.Ptr(rfc7807.InternalDetail),
 						Instance: requestInstance(r),
 					}
 					w.Header().Set("Content-Type", "application/problem+json")
@@ -261,7 +262,7 @@ func requestLoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handl
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			sw := &statusRecordingResponseWriter{ResponseWriter: w}
+			sw := &statusRecordingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 			next.ServeHTTP(sw, r)
 			logger.Info("http request",
 				"method", r.Method,
