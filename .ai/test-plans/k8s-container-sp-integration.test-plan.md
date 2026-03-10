@@ -3,10 +3,10 @@
 ## Overview
 
 - **Related Spec:** .ai/specs/k8s-container-sp.spec.md
-- **Related Requirements:** REQ-HTTP-010–040, REQ-HTTP-080–090, REQ-API-070, REQ-API-180, REQ-STR-020–070, REQ-STR-080, REQ-K8S-010–270, REQ-MON-010–030, REQ-MON-040–070, REQ-MON-100, REQ-MON-110, REQ-MON-130–150, REQ-REG-010–070, REQ-XC-ID-010–020, REQ-XC-LBL-010, REQ-XC-ERR-010–020, REQ-XC-LOG-010–020
+- **Related Requirements:** REQ-HTTP-010–040, REQ-HTTP-060–070, REQ-HTTP-080–090, REQ-HTTP-110, REQ-API-070, REQ-API-180, REQ-STR-020–070, REQ-STR-080, REQ-K8S-010–270, REQ-MON-010–030, REQ-MON-040–070, REQ-MON-100, REQ-MON-110, REQ-MON-130–150, REQ-MON-160, REQ-MON-180–190, REQ-REG-010–070, REQ-XC-ID-010–020, REQ-XC-LBL-010, REQ-XC-ERR-010–020, REQ-XC-LOG-010–020
 - **Framework:** Ginkgo v2 + Gomega
 - **Created:** 2026-02-17
-- **Last Updated:** 2026-02-18 (sync update: REQ-XC-* coverage)
+- **Last Updated:** 2026-03-10 (cross-SP alignment: added TC-I096–TC-I101; mapped existing TCs to new REQs; updated coverage matrix)
 
 Integration tests verify components working together with realistic (but
 controlled) dependencies. The K8s store tests use `client-go/kubernetes/fake`.
@@ -137,6 +137,33 @@ for full descriptions.
 - **Given:** A server configured with an `onReady` callback
 - **When:** The server starts
 - **Then:** The `onReady` callback MUST NOT be invoked until the server is confirmed to be accepting HTTP connections (readiness probe succeeds)
+
+### TC-I096: Request logging — successful request
+
+- **Requirement:** REQ-HTTP-060
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A running server with request logging middleware
+- **When:** `GET /health` is called
+- **Then:** The server log MUST contain an entry with method=GET, path=/health, status=200, and duration > 0
+
+### TC-I097: Request logging — error request
+
+- **Requirement:** REQ-HTTP-060
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A running server with request logging middleware
+- **When:** `GET /api/v1alpha1/containers/nonexistent-id` is called
+- **Then:** The server log MUST contain an entry with status=404
+
+### TC-I098: Request timeout cancels long-running requests
+
+- **Requirement:** REQ-HTTP-110
+- **Priority:** Medium
+- **Type:** Integration
+- **Given:** A server configured with a 200ms request timeout and a handler that blocks indefinitely
+- **When:** A request is made to the blocking handler
+- **Then:** The request context MUST be cancelled after approximately 200ms
 
 ---
 
@@ -798,6 +825,36 @@ for full descriptions.
 - **When:** Pod phase changes to `Running`, the debounce window elapses fully, then Pod phase changes to `Failed`
 - **Then:** Two separate CloudEvents are published to NATS: first with status `RUNNING`, then with status `FAILED`
 
+### TC-I099: Watchers reconnect after API server interruption
+
+- **Requirement:** REQ-MON-160
+- **Priority:** High
+- **Type:** Integration
+- **Status:** Pending implementation (monitoring subsystem not yet built)
+- **Given:** Resource watchers are running and connected to the API server
+- **When:** The API server connection is interrupted and then restored
+- **Then:** Resource watchers MUST automatically reconnect and resume processing events
+
+### TC-I100: Publisher retries on transient NATS failure
+
+- **Requirement:** REQ-MON-180
+- **Priority:** High
+- **Type:** Integration
+- **Status:** Pending implementation (monitoring subsystem not yet built)
+- **Given:** A status event needs to be published
+- **When:** NATS returns a transient failure on the first attempt
+- **Then:** The publisher MUST retry with increasing intervals (exponential backoff)
+
+### TC-I101: SP continues serving when NATS is unavailable
+
+- **Requirement:** REQ-MON-190
+- **Priority:** High
+- **Type:** Integration
+- **Status:** Pending implementation (monitoring subsystem not yet built)
+- **Given:** NATS is unavailable
+- **When:** The SP attempts to publish a status event
+- **Then:** The failure MUST be logged at ERROR level AND the SP MUST continue serving HTTP requests
+
 ---
 
 ## 12 · DCM Registration
@@ -959,8 +1016,11 @@ for full descriptions.
 | REQ-HTTP-020   | TC-I002, TC-I003                    | Covered |
 | REQ-HTTP-030   | TC-I004, TC-I079                    | Covered |
 | REQ-HTTP-040   | TC-I005                             | Covered |
+| REQ-HTTP-060   | TC-I096, TC-I097                    | Covered |
+| REQ-HTTP-070   | TC-I080 (apiserver), TC-I086 (apiserver), TC-I087 (apiserver) | Covered |
 | REQ-HTTP-080   | TC-I006, TC-I007                    | Covered |
 | REQ-HTTP-090   | TC-I008                             | Covered |
+| REQ-HTTP-110   | TC-I098                             | Covered |
 | REQ-API-070    | TC-I075, TC-I076                    | Covered |
 | REQ-API-151    | TC-I037                             | Covered |
 | REQ-API-180    | TC-I081                             | Covered |
@@ -1011,6 +1071,9 @@ for full descriptions.
 | REQ-MON-140    | TC-I051                             | Covered |
 | REQ-MON-145    | TC-I052                             | Covered |
 | REQ-MON-150    | TC-I048                             | Covered |
+| REQ-MON-160    | TC-I099 (pending implementation)    | Pending |
+| REQ-MON-180    | TC-I100 (pending implementation)    | Pending |
+| REQ-MON-190    | TC-I101 (pending implementation)    | Pending |
 | REQ-REG-010    | TC-I053                             | Covered |
 | REQ-REG-020    | TC-I054, TC-I068                    | Covered |
 | REQ-REG-030    | TC-I055, TC-I083, TC-I084, TC-I087  | Covered |
@@ -1028,8 +1091,8 @@ for full descriptions.
 | REQ-XC-LOG-010 | TC-I006, TC-I007                    | Covered |
 | REQ-XC-LOG-020 | TC-I006, TC-I007 (INFO), TC-I057 (ERROR) | Covered |
 
-**Total:** 88 integration test cases (including 2 E2E placeholders) covering 71
-requirements at integration level.
+**Total:** 94 integration test cases (including 2 E2E placeholders, 3 pending
+monitoring implementation) covering 77 requirements at integration level.
 
 > Requirements not listed above (REQ-HTTP-050–070, REQ-HLT-010–040,
 > REQ-API-010–060, REQ-API-080–160, REQ-API-170, REQ-STR-010, REQ-MON-090,

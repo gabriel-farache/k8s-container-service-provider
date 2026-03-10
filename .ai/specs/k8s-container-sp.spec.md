@@ -122,8 +122,12 @@ authentication/authorization middleware, rate limiting.
 | REQ-HTTP-030 | The SP MUST initiate graceful shutdown on SIGTERM: stop new connections, drain in-flight requests within configured timeout, exit cleanly | MUST | |
 | REQ-HTTP-040 | The SP MUST initiate graceful shutdown on SIGINT, behaving identically to REQ-HTTP-030 | MUST | |
 | REQ-HTTP-050 | The SP MUST load configuration values from environment variables | MUST | |
+| REQ-HTTP-060 | The SP MUST log each HTTP request at INFO level including method, path, response status code, and duration | MUST | |
+| REQ-HTTP-070 | The SP MUST catch panics in HTTP handlers and return an RFC 7807 INTERNAL error response. Panics that signal intentional connection abort MUST be re-raised. If the response has already started streaming, the panic MUST be logged without writing a response body | MUST | |
 | REQ-HTTP-080 | The SP MUST log server lifecycle events including listen address on startup | MUST | |
 | REQ-HTTP-090 | The SP MUST return 400 Bad Request with RFC 7807 error body for malformed requests | MUST | |
+| REQ-HTTP-091 | The API framework layer MUST return RFC 7807 error responses for request parsing and response serialization failures, not plain text | MUST | |
+| REQ-HTTP-110 | The SP SHOULD enforce a configurable per-request timeout, cancelling the request context after the deadline | SHOULD | |
 
 #### Configuration Introduced
 
@@ -131,6 +135,7 @@ authentication/authorization middleware, rate limiting.
 |------------|---------|---------|-------------|
 | server.address | SP_SERVER_ADDRESS | :8080 | Listen address (host:port) |
 | server.shutdownTimeout | SP_SERVER_SHUTDOWN_TIMEOUT | 15s | Graceful shutdown drain timeout |
+| server.requestTimeout | SP_SERVER_REQUEST_TIMEOUT | 30s | Per-request context timeout |
 
 #### Acceptance Criteria
 
@@ -178,12 +183,44 @@ authentication/authorization middleware, rate limiting.
 - **When** the server begins listening or initiates shutdown
 - **Then** the SP MUST log the event including the listen address on startup
 
+##### AC-HTTP-060: Request logging
+
+- **Validates:** REQ-HTTP-060
+- **Given** any HTTP request is processed
+- **When** the response is sent
+- **Then** the SP MUST log at INFO level with method, path, status code, and duration
+
+##### AC-HTTP-070: Panic recovery
+
+- **Validates:** REQ-HTTP-070
+- **Given** a handler panics during request processing
+- **When** the panic is caught
+- **Then** the response MUST be HTTP 500 with RFC 7807 body (type=INTERNAL)
+- **And** the panic and stack trace MUST be logged at ERROR level
+- **And** panics that signal intentional connection abort MUST be re-raised
+- **And** if the response has already started streaming, a warning MUST be logged without writing a response body
+
 ##### AC-HTTP-090: Malformed request handling
 
 - **Validates:** REQ-HTTP-090
 - **Given** a request with invalid parameters (e.g., malformed query params)
 - **When** the request reaches the router
 - **Then** the SP MUST return a 400 Bad Request with an RFC 7807 error body
+
+##### AC-HTTP-091: Framework-layer error responses
+
+- **Validates:** REQ-HTTP-091
+- **Given** the API framework layer encounters a request parsing or response serialization failure
+- **When** an error response is generated
+- **Then** the error response MUST be RFC 7807 with `Content-Type: application/problem+json`
+- **And** INTERNAL errors MUST NOT expose implementation details
+
+##### AC-HTTP-110: Request timeout
+
+- **Validates:** REQ-HTTP-110
+- **Given** a configurable request timeout is set (default 30s)
+- **When** a request exceeds the timeout
+- **Then** the request context MUST be cancelled
 
 #### Dependencies
 
@@ -848,6 +885,10 @@ message acknowledgment/retry, historical event replay.
 | REQ-MON-140 | Resource watchers MUST periodically re-reconcile status for all tracked resources at the configured resync interval | MUST | |
 | REQ-MON-145 | On startup, after the resource cache has completed initial synchronization, the SP MUST publish a status CloudEvent for every existing DCM-managed resource | MUST | |
 | REQ-MON-150 | When status is FAILED, the message MUST include the failure reason when available (e.g., from Pod.Status.ContainerStatuses) | MUST | |
+| REQ-MON-160 | Resource watchers MUST automatically reconnect after API server disconnection and resume processing events without manual intervention | MUST | |
+| REQ-MON-170 | Status event publishing MUST be decoupled from the transport mechanism to allow alternative implementations | MUST | |
+| REQ-MON-180 | Status event publishing MUST retry with exponential backoff on transient NATS failures, up to a configurable maximum number of attempts | MUST | |
+| REQ-MON-190 | When NATS is unavailable, the SP MUST log the failure and continue operating without crashing | MUST | |
 
 **Status mapping (REQ-MON-080):**
 
@@ -1005,6 +1046,35 @@ message acknowledgment/retry, historical event replay.
 - **Given** a Pod enters Failed phase with reason "CrashLoopBackOff"
 - **When** the status event is published
 - **Then** the message MUST include "CrashLoopBackOff" or equivalent detail from Pod.Status.ContainerStatuses
+
+##### AC-MON-170: Watcher resilience
+
+- **Validates:** REQ-MON-160
+- **Given** the API server connection is interrupted
+- **When** the API server becomes available again
+- **Then** resource watchers MUST automatically reconnect and resume event processing
+
+##### AC-MON-180: Decoupled status publishing
+
+- **Validates:** REQ-MON-170
+- **Given** the status event publishing subsystem
+- **When** status events are published
+- **Then** publishing MUST be decoupled from the transport mechanism
+
+##### AC-MON-190: Publish retry on failure
+
+- **Validates:** REQ-MON-180
+- **Given** a transient NATS failure occurs during event publishing
+- **When** the publisher retries
+- **Then** retries MUST use exponential backoff up to a configurable maximum
+
+##### AC-MON-200: NATS failure handling
+
+- **Validates:** REQ-MON-190
+- **Given** NATS is unavailable
+- **When** the SP attempts to publish a status event
+- **Then** the failure MUST be logged at ERROR level
+- **And** the SP MUST continue serving HTTP requests without crashing
 
 #### Dependencies
 
@@ -1175,6 +1245,8 @@ Depends on Topic 1 (HTTP Server).
 |----|-------------|----------|-------|
 | REQ-XC-ERR-010 | All HTTP error responses MUST conform to RFC 7807 (Problem Details for HTTP APIs) using the Error schema defined in the OpenAPI spec | MUST | |
 | REQ-XC-ERR-020 | Error responses MUST set `Content-Type: application/problem+json` | MUST | |
+| REQ-XC-ERR-030 | Error responses SHOULD include `detail` and `instance` fields. The `instance` field SHOULD be the request URI | SHOULD | |
+| REQ-XC-ERR-040 | Error responses for INTERNAL errors MUST NOT expose implementation details such as stack traces, panic messages, raw dependency error strings, file paths, or memory addresses | MUST | |
 
 #### Acceptance Criteria
 
@@ -1191,6 +1263,21 @@ Depends on Topic 1 (HTTP Server).
 - **Given** any error response
 - **When** the response is sent
 - **Then** the `Content-Type` header MUST be `application/problem+json`
+
+##### AC-XC-ERR-030: Instance field for tracing
+
+- **Validates:** REQ-XC-ERR-030
+- **Given** any error condition
+- **When** the error response is returned
+- **Then** the `instance` field SHOULD be set to the request URI
+
+##### AC-XC-ERR-040: No implementation detail leakage
+
+- **Validates:** REQ-XC-ERR-040
+- **Given** an internal error occurs (unexpected store error, panic, or validation edge case)
+- **When** the error response is returned
+- **Then** the detail field MUST contain a generic message
+- **And** the response MUST NOT contain stack traces, file paths, memory addresses, or raw internal error messages
 
 ### 5.4 Logging
 
@@ -1233,6 +1320,7 @@ Depends on Topic 1 (HTTP Server).
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
 | REQ-XC-CFG-010 | All configuration MUST be loadable from environment variables | MUST | |
+| REQ-XC-CFG-020 | The SP MUST fail fast on startup when required configuration values are absent or empty, returning an error before starting any subsystem | MUST | |
 
 #### Acceptance Criteria
 
@@ -1242,6 +1330,14 @@ Depends on Topic 1 (HTTP Server).
 - **Given** any configuration value
 - **When** the corresponding environment variable is set
 - **Then** the SP MUST use the value from the environment variable
+
+##### AC-XC-CFG-020: Fail-fast on missing required config
+
+- **Validates:** REQ-XC-CFG-020
+- **Given** a required config value (SP_PROVIDER_NAME, SP_PROVIDER_ENDPOINT, or SP_DCM_REGISTRATION_URL) is absent or empty
+- **When** the SP starts
+- **Then** the SP MUST return an error identifying the missing field
+- **And** MUST exit before starting the HTTP server or any subsystem
 
 ---
 
@@ -1253,6 +1349,7 @@ All configuration is loaded from environment variables.
 |------------|---------|---------|----------|-------|
 | server.address | SP_SERVER_ADDRESS | :8080 | No | 1 |
 | server.shutdownTimeout | SP_SERVER_SHUTDOWN_TIMEOUT | 15s | No | 1 |
+| server.requestTimeout | SP_SERVER_REQUEST_TIMEOUT | 30s | No | 1 |
 | kubernetes.namespace | SP_K8S_NAMESPACE | default | No | 4 |
 | kubernetes.kubeconfig | SP_K8S_KUBECONFIG | (auto) | No | 4 |
 | kubernetes.defaultServiceType | SP_K8S_DEFAULT_SVC_TYPE | ClusterIP | No | 4 |
@@ -1449,16 +1546,16 @@ conditions (unless ReplicaFailure=True or Replicas=0, which map to FAILED).
 
 | Prefix | Topic | Count |
 |--------|-------|-------|
-| REQ-HTTP-NNN | 4.1: HTTP Server | 7 |
+| REQ-HTTP-NNN | 4.1: HTTP Server | 11 |
 | REQ-HLT-NNN | 4.2: Health Service | 4 |
 | REQ-API-NNN | 4.3: Container API Handlers | 19 |
 | REQ-STR-NNN | 4.4: Store Interface | 8 |
 | REQ-K8S-NNN | 4.4: Kubernetes Integration | 28 |
-| REQ-MON-NNN | 4.5: Status Monitoring | 17 |
+| REQ-MON-NNN | 4.5: Status Monitoring | 21 |
 | REQ-REG-NNN | 4.6: DCM Registration | 9 |
 | REQ-XC-ID-NNN | 5.1: Resource Identity | 2 |
 | REQ-XC-LBL-NNN | 5.2: Resource Labeling | 1 |
-| REQ-XC-ERR-NNN | 5.3: Error Handling | 2 |
+| REQ-XC-ERR-NNN | 5.3: Error Handling | 4 |
 | REQ-XC-LOG-NNN | 5.4: Logging | 2 |
-| REQ-XC-CFG-NNN | 5.5: Configuration Management | 1 |
-| **Total** | | **100** |
+| REQ-XC-CFG-NNN | 5.5: Configuration Management | 2 |
+| **Total** | | **111** |

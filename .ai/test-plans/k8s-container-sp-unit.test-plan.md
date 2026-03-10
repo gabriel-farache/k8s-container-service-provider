@@ -3,10 +3,10 @@
 ## Overview
 
 - **Related Spec:** .ai/specs/k8s-container-sp.spec.md
-- **Related Requirements:** REQ-HTTP-050, REQ-HTTP-090, REQ-HLT-010–040, REQ-API-010–180, REQ-STR-010, REQ-STR-080, REQ-K8S-040, REQ-K8S-050, REQ-K8S-230, REQ-MON-040–090, REQ-MON-110–120, REQ-MON-150, REQ-REG-020, REQ-XC-ID-010–020, REQ-XC-ERR-010–020, REQ-XC-CFG-010
+- **Related Requirements:** REQ-HTTP-050, REQ-HTTP-091, REQ-HTTP-090, REQ-HLT-010–040, REQ-API-010–180, REQ-STR-010, REQ-STR-080, REQ-K8S-040, REQ-K8S-050, REQ-K8S-230, REQ-MON-040–090, REQ-MON-110–120, REQ-MON-150, REQ-MON-170, REQ-REG-020, REQ-XC-ID-010–020, REQ-XC-ERR-010–040, REQ-XC-CFG-010–020
 - **Framework:** Ginkgo v2 + Gomega
 - **Created:** 2026-02-17
-- **Last Updated:** 2026-03-09 (added TC-U069 positive label test; tightened TC-U067 assertion to 201 + body; updated coverage matrix)
+- **Last Updated:** 2026-03-10 (cross-SP alignment: added TC-U070, TC-U071, TC-U072; mapped existing TCs to new REQs; updated coverage matrix)
 
 Unit tests verify individual components in isolation. All external dependencies
 (ContainerRepository, K8s client, NATS, HTTP server) are replaced with mocks,
@@ -328,6 +328,26 @@ construction, debounce, indexer functions, registration payload builders) are
 - **When:** The handler processes the response
 - **Then:** HTTP status is `500` AND body is RFC 7807 error with type `INTERNAL`
 
+### TC-U070: ResponseErrorHandlerFunc returns RFC 7807
+
+- **Requirement:** REQ-HTTP-091
+- **Priority:** High
+- **Type:** Unit
+- **Given:** The strict handler adapter's `ResponseErrorHandlerFunc` is configured
+- **When:** It is invoked with an error
+- **Then:** The response MUST be HTTP 500 with `Content-Type: application/problem+json`
+- **And** the body MUST be RFC 7807 with type `INTERNAL`
+- **And** the body MUST NOT contain the raw error message
+
+### TC-U071: Handler error responses include instance field
+
+- **Requirement:** REQ-XC-ERR-030
+- **Priority:** High
+- **Type:** Unit
+- **Given:** A handler error occurs (mapCreateError, mapGetError, mapDeleteError, mapListError)
+- **When:** The error response is returned
+- **Then:** The `instance` field MUST be set to the request path
+
 ---
 
 ## 4 · Status Reconciliation Logic
@@ -419,6 +439,16 @@ dedicated test class or `Describe` block.
 - **When:** A compile-time type assertion to `StrictServerInterface` is performed
 - **Then:** The assertion compiles and succeeds
 - **Referenced by:** TC-U009 (first handler test — `var _ StrictServerInterface = (*Handler)(nil)` in test file)
+
+#### TC-U072: StatusPublisher interface satisfied by NATS publisher
+
+- **Requirement:** REQ-MON-170
+- **Priority:** High
+- **Type:** Unit (compile-time assertion)
+- **Given:** The StatusPublisher interface is defined
+- **When:** A compile-time type assertion of the NATS publisher to StatusPublisher is performed
+- **Then:** The assertion compiles and succeeds
+- **Referenced by:** Pending implementation (monitoring subsystem not yet built)
 
 #### TC-U024: ContainerRepository interface is satisfied by implementation
 
@@ -799,7 +829,9 @@ dedicated test class or `Describe` block.
 | Requirement   | Test Cases                        | Status  |
 |---------------|-----------------------------------|---------|
 | REQ-HTTP-050  | TC-U002, TC-U004                  | Covered |
+| REQ-HTTP-070  | TC-I080, TC-I086, TC-I087 (integration)  | Covered |
 | REQ-HTTP-090  | TC-U057 (via TC-I008), TC-U058 (via TC-I008), TC-U067 (via TC-U014) | Covered |
+| REQ-HTTP-091  | TC-U070                           | Covered |
 | REQ-HLT-010   | TC-U005                           | Covered |
 | REQ-HLT-020   | TC-U005, TC-U006                  | Covered |
 | REQ-HLT-030   | TC-U005 (transitively via generated `VisitGetHealthResponse` + TC-I001/I002) | Covered |
@@ -841,11 +873,15 @@ dedicated test class or `Describe` block.
 | REQ-XC-ID-020 | TC-U013, TC-U046                  | Covered |
 | REQ-XC-ERR-010| TC-U022                           | Covered |
 | REQ-XC-ERR-020| TC-U022                           | Covered |
+| REQ-XC-ERR-030| TC-U071                           | Covered |
+| REQ-XC-ERR-040| TC-U051, TC-I080 (integration)    | Covered |
 | REQ-REG-070   | TC-U061                           | Covered |
 | REQ-XC-CFG-010| TC-U002, TC-U004, TC-U063         | Covered |
+| REQ-XC-CFG-020| TC-U063                           | Covered |
+| REQ-MON-170   | TC-U072 (pending implementation)  | Pending |
 
-**Total:** 64 test case IDs (2 retired: TC-U065, TC-U066) — 34 in behavioural
-test classes, 30 in the utility index (tested transitively through higher-level
+**Total:** 67 test case IDs (2 retired: TC-U065, TC-U066) — 36 in behavioural
+test classes, 31 in the utility index (tested transitively through higher-level
 behavioural and integration tests).
 
 > Requirements not listed above (REQ-HTTP-010–040, REQ-HTTP-080,
