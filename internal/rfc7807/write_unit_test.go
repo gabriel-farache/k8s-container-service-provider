@@ -22,7 +22,6 @@ func TestRFC7807(t *testing.T) {
 }
 
 var _ = Describe("WriteResponse", func() {
-
 	It("writes a complete RFC 7807 response with all fields", func() {
 		logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 		w := httptest.NewRecorder()

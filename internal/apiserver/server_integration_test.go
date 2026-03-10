@@ -819,7 +819,7 @@ var _ = Describe("HTTP Server", func() {
 
 		resp, err := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 		Expect(err).NotTo(HaveOccurred())
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
 		body, err := io.ReadAll(resp.Body)
@@ -855,9 +855,7 @@ var _ = Describe("HTTP Server", func() {
 
 		// With recovery middleware outermost, panic cases are logged
 		// by recovery at ERROR level (not by request logging middleware).
-		Eventually(func() string {
-			return logBuf.String()
-		}).WithTimeout(2 * time.Second).WithPolling(50 * time.Millisecond).Should(
+		Eventually(logBuf.String).WithTimeout(2 * time.Second).WithPolling(50 * time.Millisecond).Should(
 			ContainSubstring(`"level":"ERROR"`),
 		)
 	})
