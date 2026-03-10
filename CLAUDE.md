@@ -52,7 +52,7 @@ Generated files (do not edit manually):
 - **Repository pattern**: `internal/store/repository.go` defines `ContainerRepository`. The Kubernetes implementation in `internal/kubernetes/` maps containers to Deployments. Custom error types (`NotFoundError`, `ConflictError`, `InvalidArgumentError`) in `internal/store/errors.go` drive HTTP status code mapping in handlers.
 - **RFC 7807 errors**: All error responses use Problem Details format with types like `INVALIDARGUMENT`, `NOTFOUND`, `ALREADYEXISTS`, `INTERNAL`.
 - **Handler validation**: `internal/handlers/container/validation.go` validates business rules (CPU/memory min≤max, reserved label keys, container ID format per AEP-122).
-- **Config**: Environment variables with `SP_` prefix are parsed via `caarlos0/env` into structs in `internal/config/`.
+- **Config**: Environment variables are parsed via `caarlos0/env` into structs in `internal/config/`. Prefixes: `SP_*` (provider identity), `SP_SERVER_*`, `SP_K8S_*`, `DCM_*` (registry).
 
 ### Testing
 

@@ -19,12 +19,12 @@ var _ = Describe("Configuration", func() {
 		os.Unsetenv("SP_SERVER_READ_TIMEOUT")
 		os.Unsetenv("SP_SERVER_WRITE_TIMEOUT")
 		os.Unsetenv("SP_SERVER_IDLE_TIMEOUT")
-		os.Unsetenv("SP_PROVIDER_NAME")
-		os.Unsetenv("SP_PROVIDER_DISPLAY_NAME")
-		os.Unsetenv("SP_PROVIDER_ENDPOINT")
-		os.Unsetenv("SP_PROVIDER_REGION")
-		os.Unsetenv("SP_PROVIDER_ZONE")
-		os.Unsetenv("SP_DCM_REGISTRATION_URL")
+		_ = os.Unsetenv("SP_NAME")
+		_ = os.Unsetenv("SP_DISPLAY_NAME")
+		_ = os.Unsetenv("SP_ENDPOINT")
+		_ = os.Unsetenv("SP_REGION")
+		_ = os.Unsetenv("SP_ZONE")
+		_ = os.Unsetenv("DCM_REGISTRATION_URL")
 	}
 
 	BeforeEach(func() {
@@ -37,9 +37,9 @@ var _ = Describe("Configuration", func() {
 
 	// setRequiredEnv sets the mandatory env vars so Load() succeeds.
 	setRequiredEnv := func() {
-		os.Setenv("SP_PROVIDER_NAME", "test-sp")
-		os.Setenv("SP_PROVIDER_ENDPOINT", "https://test.example.com")
-		os.Setenv("SP_DCM_REGISTRATION_URL", "https://dcm.example.com")
+		_ = os.Setenv("SP_NAME", "test-sp")
+		_ = os.Setenv("SP_ENDPOINT", "https://test.example.com")
+		_ = os.Setenv("DCM_REGISTRATION_URL", "https://dcm.example.com")
 	}
 
 	// TC-U002: Load configuration from environment variables
@@ -47,9 +47,9 @@ var _ = Describe("Configuration", func() {
 		setRequiredEnv()
 		os.Setenv("SP_SERVER_ADDRESS", ":9090")
 		os.Setenv("SP_SERVER_SHUTDOWN_TIMEOUT", "30s")
-		os.Setenv("SP_PROVIDER_DISPLAY_NAME", "Test Provider")
-		os.Setenv("SP_PROVIDER_REGION", "us-east-1")
-		os.Setenv("SP_PROVIDER_ZONE", "us-east-1a")
+		_ = os.Setenv("SP_DISPLAY_NAME", "Test Provider")
+		_ = os.Setenv("SP_REGION", "us-east-1")
+		_ = os.Setenv("SP_ZONE", "us-east-1a")
 		os.Setenv("SP_SERVER_READ_TIMEOUT", "10s")
 		os.Setenv("SP_SERVER_WRITE_TIMEOUT", "20s")
 		os.Setenv("SP_SERVER_IDLE_TIMEOUT", "120s")
@@ -92,8 +92,8 @@ var _ = Describe("Configuration", func() {
 		Expect(cfg).To(BeNil())
 
 		errMsg := err.Error()
-		Expect(errMsg).To(ContainSubstring("SP_PROVIDER_NAME"))
-		Expect(errMsg).To(ContainSubstring("SP_PROVIDER_ENDPOINT"))
-		Expect(errMsg).To(ContainSubstring("SP_DCM_REGISTRATION_URL"))
+		Expect(errMsg).To(ContainSubstring("SP_NAME"))
+		Expect(errMsg).To(ContainSubstring("SP_ENDPOINT"))
+		Expect(errMsg).To(ContainSubstring("DCM_REGISTRATION_URL"))
 	})
 })

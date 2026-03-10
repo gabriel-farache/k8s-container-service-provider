@@ -42,13 +42,13 @@ type KubernetesConfig struct {
 // Config is the root configuration for the service provider.
 type Config struct {
 	Server     ServerConfig     `envPrefix:"SP_SERVER_"`
-	Provider   ProviderConfig   `envPrefix:"SP_PROVIDER_"`
-	DCM        DCMConfig        `envPrefix:"SP_DCM_"`
+	Provider   ProviderConfig   `envPrefix:"SP_"`
+	DCM        DCMConfig        `envPrefix:"DCM_"`
 	Kubernetes KubernetesConfig `envPrefix:"SP_K8S_"`
 }
 
 // Load reads configuration from environment variables.
-// Env vars: SP_SERVER_*, SP_PROVIDER_*, SP_DCM_* (see struct tags for details).
+// Env vars: SP_SERVER_*, SP_*, DCM_*, SP_K8S_* (see struct tags for details).
 func Load() (*Config, error) {
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
