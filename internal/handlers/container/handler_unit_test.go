@@ -18,8 +18,6 @@ import (
 )
 
 var _ = Describe("Container API Handlers", func() {
-	const testNamespace = "test-ns"
-
 	var (
 		repo *mockContainerRepository
 		h    oapigen.StrictServerInterface
@@ -34,7 +32,6 @@ var _ = Describe("Container API Handlers", func() {
 	// GetHealth
 	// -----------------------------------------------------------------------
 	Describe("GetHealth", func() {
-
 		// TC-U005: Returns 200 OK with correct body
 		// Validates: REQ-HLT-010, REQ-HLT-020
 		// Transitively covers: TC-U007 (REQ-HLT-040 — GetHealth uses only
@@ -80,14 +77,12 @@ var _ = Describe("Container API Handlers", func() {
 	// CreateContainer
 	// -----------------------------------------------------------------------
 	Describe("CreateContainer", func() {
-
 		Context("successful creation", func() {
-
 			// TC-U009: returns 201 with populated read-only fields
 			It("returns 201 with populated read-only fields (TC-U009)", func() {
 				body := validCreateBody()
 				repo.CreateFunc = func(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
-					return newContainerResult(c, id, testNamespace), nil
+					return newContainerResult(c, id), nil
 				}
 
 				req := oapigen.CreateContainerRequestObject{
@@ -116,7 +111,7 @@ var _ = Describe("Container API Handlers", func() {
 				var capturedID string
 				repo.CreateFunc = func(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
 					capturedID = id
-					return newContainerResult(c, id, testNamespace), nil
+					return newContainerResult(c, id), nil
 				}
 
 				req := oapigen.CreateContainerRequestObject{
@@ -139,7 +134,7 @@ var _ = Describe("Container API Handlers", func() {
 				var capturedID string
 				repo.CreateFunc = func(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
 					capturedID = id
-					return newContainerResult(c, id, testNamespace), nil
+					return newContainerResult(c, id), nil
 				}
 
 				req := oapigen.CreateContainerRequestObject{
@@ -157,7 +152,6 @@ var _ = Describe("Container API Handlers", func() {
 		})
 
 		Context("conflict handling", func() {
-
 			// TC-U013: returns 409 on name conflict
 			It("returns 409 on name conflict (TC-U013)", func() {
 				body := validCreateBody()
@@ -200,7 +194,6 @@ var _ = Describe("Container API Handlers", func() {
 		})
 
 		Context("request validation", func() {
-
 			// TC-U069: accepts and propagates non-reserved user labels
 			It("accepts and propagates non-reserved user labels (TC-U069)", func() {
 				body := validCreateBody()
@@ -210,7 +203,7 @@ var _ = Describe("Container API Handlers", func() {
 				var capturedContainer v1alpha1.Container
 				repo.CreateFunc = func(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
 					capturedContainer = c
-					return newContainerResult(c, id, testNamespace), nil
+					return newContainerResult(c, id), nil
 				}
 
 				req := oapigen.CreateContainerRequestObject{
@@ -308,11 +301,10 @@ var _ = Describe("Container API Handlers", func() {
 	// ListContainers
 	// -----------------------------------------------------------------------
 	Describe("ListContainers", func() {
-
 		// TC-U015: returns 200 with containers
 		It("returns 200 with containers (TC-U015)", func() {
-			c1 := *newContainerResult(validCreateBody(), "id-1", testNamespace)
-			c2 := *newContainerResult(validCreateBody(), "id-2", testNamespace)
+			c1 := *newContainerResult(validCreateBody(), "id-1")
+			c2 := *newContainerResult(validCreateBody(), "id-2")
 			repo.ListFunc = func(_ context.Context, _ int32, _ string) (*v1alpha1.ContainerList, error) {
 				return &v1alpha1.ContainerList{
 					Containers: &[]v1alpha1.Container{c1, c2},
@@ -404,10 +396,9 @@ var _ = Describe("Container API Handlers", func() {
 	// GetContainer
 	// -----------------------------------------------------------------------
 	Describe("GetContainer", func() {
-
 		// TC-U018: returns 200 for existing container
 		It("returns 200 for existing container (TC-U018)", func() {
-			result := newContainerResult(validCreateBody(), "existing-id", testNamespace)
+			result := newContainerResult(validCreateBody(), "existing-id")
 			repo.GetFunc = func(_ context.Context, containerID string) (*v1alpha1.Container, error) {
 				Expect(containerID).To(Equal("existing-id"))
 				return result, nil
@@ -449,7 +440,6 @@ var _ = Describe("Container API Handlers", func() {
 	// DeleteContainer
 	// -----------------------------------------------------------------------
 	Describe("DeleteContainer", func() {
-
 		// TC-U020: returns 204 for existing container
 		It("returns 204 for existing container (TC-U020)", func() {
 			repo.DeleteFunc = func(_ context.Context, containerID string) error {
@@ -491,7 +481,6 @@ var _ = Describe("Container API Handlers", func() {
 	// Instance field in error responses
 	// -----------------------------------------------------------------------
 	Describe("Instance field", func() {
-
 		// TC-U071: handler error responses include instance field
 		DescribeTable("error responses include instance field (TC-U071)",
 			func(
@@ -606,7 +595,6 @@ var _ = Describe("Container API Handlers", func() {
 	// Error handling
 	// -----------------------------------------------------------------------
 	Describe("Error handling", func() {
-
 		// TC-U022: error responses use RFC 7807 format
 		DescribeTable("error responses use RFC 7807 format (TC-U022)",
 			func(

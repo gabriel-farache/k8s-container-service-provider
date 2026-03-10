@@ -11,7 +11,6 @@ import (
 )
 
 var _ = Describe("Configuration", func() {
-
 	// Helper to unset all config-related env vars between tests.
 	clearEnv := func() {
 		_ = os.Unsetenv("SP_SERVER_ADDRESS")

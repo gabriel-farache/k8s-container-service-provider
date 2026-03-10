@@ -10,6 +10,8 @@ import (
 	"github.com/dcm-project/k8s-container-service-provider/internal/store"
 )
 
+const testNamespace = "test-ns"
+
 // ---------------------------------------------------------------------------
 // Compile-time assertions
 // ---------------------------------------------------------------------------
@@ -93,10 +95,11 @@ func validCreateBody() v1alpha1.Container {
 // newContainerResult simulates the enriched output the store returns after a
 // successful Create. Read-only fields (id, path, status, timestamps, namespace)
 // are populated as the real store would set them.
-func newContainerResult(c v1alpha1.Container, id, namespace string) *v1alpha1.Container {
+func newContainerResult(c v1alpha1.Container, id string) *v1alpha1.Container {
 	now := time.Now().UTC()
 	status := v1alpha1.PENDING
 	path := "containers/" + id
+	ns := testNamespace
 
 	result := c
 	result.Id = &id
@@ -104,6 +107,6 @@ func newContainerResult(c v1alpha1.Container, id, namespace string) *v1alpha1.Co
 	result.Status = &status
 	result.CreateTime = &now
 	result.UpdateTime = &now
-	result.Metadata.Namespace = &namespace
+	result.Metadata.Namespace = &ns
 	return &result
 }

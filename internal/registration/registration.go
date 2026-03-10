@@ -1,3 +1,4 @@
+// Package registration handles service provider registration with the DCM control plane.
 package registration
 
 import (
@@ -35,9 +36,7 @@ func mustPostPath() string {
 	return p
 }
 
-var (
-	ops = []string{"CREATE", "DELETE", "READ"}
-)
+var ops = []string{"CREATE", "DELETE", "READ"}
 
 // Option configures a Registrar.
 type Option func(*Registrar)
@@ -100,7 +99,6 @@ func NewRegistrar(cfg *config.Config, logger *slog.Logger, opts ...Option) (*Reg
 
 // BuildPayload constructs the registration payload from configuration.
 func BuildPayload(cfg *config.Config) dcmv1alpha1.Provider {
-
 	p := dcmv1alpha1.Provider{
 		Name:          cfg.Provider.Name,
 		ServiceType:   serviceType,

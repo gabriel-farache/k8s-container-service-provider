@@ -12,7 +12,6 @@ import (
 )
 
 var _ = Describe("Registration Payload", func() {
-
 	// TC-U043: Payload contains all configured fields
 	It("contains name, serviceType, displayName, endpoint with suffix, and operations (TC-U043)", func() {
 		cfg := &config.Config{

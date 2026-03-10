@@ -1,3 +1,4 @@
+// Package dcm defines shared constants and conventions for the DCM service provider.
 package dcm
 
 const (

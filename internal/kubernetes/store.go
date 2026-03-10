@@ -1,3 +1,4 @@
+// Package kubernetes implements the container store using Kubernetes resources.
 package kubernetes
 
 import (
@@ -34,10 +35,7 @@ func NewK8sContainerStore(client kubernetes.Interface, cfg K8sConfig, logger *sl
 // buildContainer reconstructs an API Container from a Deployment and enriches
 // it with runtime data from the cluster.
 func (s *K8sContainerStore) buildContainer(ctx context.Context, deploy *appsv1.Deployment, instanceID string) (*v1alpha1.Container, error) {
-	c, err := containerFromDeployment(deploy, instanceID)
-	if err != nil {
-		return nil, err
-	}
+	c := containerFromDeployment(deploy, instanceID)
 	if err := s.enrichFromCluster(ctx, &c, deploy, instanceID); err != nil {
 		return nil, err
 	}

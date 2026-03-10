@@ -13,7 +13,6 @@ import (
 
 var _ = Describe("K8s Store", func() {
 	Describe("List Operations", func() {
-
 		// TC-I034: List supports pagination over Deployments
 		It("supports pagination over Deployments (TC-I034)", func() {
 			s, client := newTestStore(defaultConfig())
@@ -22,7 +21,7 @@ var _ = Describe("K8s Store", func() {
 			for i := 0; i < 5; i++ {
 				name := fmt.Sprintf("app-%d", i)
 				id := fmt.Sprintf("id-%d", i)
-				err := createFakeDeployment(client, "default", name, id)
+				err := createFakeDeployment(client, name, id)
 				Expect(err).NotTo(HaveOccurred())
 			}
 
@@ -43,7 +42,7 @@ var _ = Describe("K8s Store", func() {
 			for i := 0; i < 5; i++ {
 				name := fmt.Sprintf("app-%d", i)
 				id := fmt.Sprintf("id-%d", i)
-				err := createFakeDeployment(client, "default", name, id)
+				err := createFakeDeployment(client, name, id)
 				Expect(err).NotTo(HaveOccurred())
 			}
 
@@ -76,7 +75,7 @@ var _ = Describe("K8s Store", func() {
 			for i := 0; i < 75; i++ {
 				name := fmt.Sprintf("app-%03d", i)
 				id := fmt.Sprintf("id-%03d", i)
-				err := createFakeDeployment(client, "default", name, id)
+				err := createFakeDeployment(client, name, id)
 				Expect(err).NotTo(HaveOccurred())
 			}
 
@@ -94,7 +93,7 @@ var _ = Describe("K8s Store", func() {
 			s, client := newTestStore(defaultConfig())
 
 			// Pre-create at least one Deployment so the store has data
-			err := createFakeDeployment(client, "default", "my-app", "id-001")
+			err := createFakeDeployment(client, "my-app", "id-001")
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = s.List(context.Background(), 10, "not-a-valid-token")
@@ -119,7 +118,7 @@ var _ = Describe("K8s Store", func() {
 		It("returns error for negative page_token offset (TC-I086)", func() {
 			s, client := newTestStore(defaultConfig())
 
-			err := createFakeDeployment(client, "default", "my-app", "id-001")
+			err := createFakeDeployment(client, "my-app", "id-001")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Encode "-5" as base64 to craft a negative offset token

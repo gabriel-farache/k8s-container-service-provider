@@ -14,13 +14,12 @@ import (
 
 var _ = Describe("K8s Store", func() {
 	Describe("Delete Operations", func() {
-
 		// TC-I037: Delete removes Deployment and associated Service
 		It("removes Deployment and associated Service (TC-I037)", func() {
 			s, client := newTestStore(defaultConfig())
 
 			// Pre-create Deployment and Service
-			err := createFakeDeployment(client, "default", "my-app", "abc-123")
+			err := createFakeDeployment(client, "my-app", "abc-123")
 			Expect(err).NotTo(HaveOccurred())
 			err = createFakeService(client, "default", "my-app", "abc-123", corev1.ServiceTypeClusterIP, []int32{8080})
 			Expect(err).NotTo(HaveOccurred())
@@ -47,7 +46,7 @@ var _ = Describe("K8s Store", func() {
 			s, client := newTestStore(defaultConfig())
 
 			// Pre-create only Deployment, no Service
-			err := createFakeDeployment(client, "default", "my-app", "abc-123")
+			err := createFakeDeployment(client, "my-app", "abc-123")
 			Expect(err).NotTo(HaveOccurred())
 
 			err = s.Delete(context.Background(), "abc-123")
@@ -63,9 +62,9 @@ var _ = Describe("K8s Store", func() {
 			s, client := newTestStore(defaultConfig())
 
 			// Create two Deployments with the same instance ID but different names
-			err := createFakeDeployment(client, "default", "app-one", "dup-id")
+			err := createFakeDeployment(client, "app-one", "dup-id")
 			Expect(err).NotTo(HaveOccurred())
-			err = createFakeDeployment(client, "default", "app-two", "dup-id")
+			err = createFakeDeployment(client, "app-two", "dup-id")
 			Expect(err).NotTo(HaveOccurred())
 
 			err = s.Delete(context.Background(), "dup-id")

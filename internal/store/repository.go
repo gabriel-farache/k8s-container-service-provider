@@ -1,3 +1,4 @@
+// Package store defines the container repository interface and error types.
 package store
 
 import (

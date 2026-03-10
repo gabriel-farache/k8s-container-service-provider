@@ -1,3 +1,4 @@
+// Package container implements the container API request handlers.
 package container
 
 import (

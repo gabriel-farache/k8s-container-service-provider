@@ -53,7 +53,6 @@ func (s *stubContainerRepository) Delete(_ context.Context, _ string) error {
 }
 
 var _ = Describe("Container API Handlers - Request Validation", func() {
-
 	// startValidationServer starts a minimal server for validation tests and
 	// returns the base URL. The server is stopped when the test context ends.
 	startValidationServer := func() string {

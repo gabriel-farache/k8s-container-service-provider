@@ -48,7 +48,6 @@ func (b *syncBuffer) Reset() {
 }
 
 var _ = Describe("Registration Integration", func() {
-
 	var (
 		mockServer *httptest.Server
 		cfg        *config.Config

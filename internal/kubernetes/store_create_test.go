@@ -15,7 +15,6 @@ import (
 
 var _ = Describe("K8s Store", func() {
 	Describe("Create Operations", func() {
-
 		// TC-I009: Create produces a Deployment with replicas=1
 		It("produces a Deployment with replicas=1 (TC-I009)", func() {
 			s, client := newTestStore(defaultConfig())
@@ -203,7 +202,7 @@ var _ = Describe("K8s Store", func() {
 			s, client := newTestStore(defaultConfig())
 
 			// Pre-create a Deployment with the target instance ID
-			err := createFakeDeployment(client, "default", "existing-app", "existing-id")
+			err := createFakeDeployment(client, "existing-app", "existing-id")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Attempt to create with the same ID but different name
@@ -238,6 +237,5 @@ var _ = Describe("K8s Store", func() {
 			Expect(deploy.Spec.Template.Labels).To(HaveKeyWithValue("env", "staging"))
 			Expect(deploy.Spec.Template.Labels).To(HaveKeyWithValue("team", "platform"))
 		})
-
 	})
 })

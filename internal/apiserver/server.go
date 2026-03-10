@@ -1,3 +1,4 @@
+// Package apiserver provides the HTTP server and middleware for the container API.
 package apiserver
 
 import (

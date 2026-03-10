@@ -14,7 +14,6 @@ import (
 )
 
 var _ = Describe("scrubValidationError", func() {
-
 	// Branch 1: RequestError with nested SchemaError
 	It("extracts SchemaError reason with parameter prefix", func() {
 		schemaErr := &openapi3.SchemaError{

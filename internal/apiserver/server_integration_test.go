@@ -51,7 +51,7 @@ type panicOnListHandler struct {
 	oapigen.Unimplemented
 }
 
-func (p *panicOnListHandler) ListContainers(w http.ResponseWriter, _ *http.Request, _ v1alpha1.ListContainersParams) {
+func (p *panicOnListHandler) ListContainers(_ http.ResponseWriter, _ *http.Request, _ v1alpha1.ListContainersParams) {
 	panic("unexpected failure")
 }
 
@@ -85,13 +85,12 @@ type blockingListHandler struct {
 	ctxCancelled chan struct{}
 }
 
-func (b *blockingListHandler) ListContainers(w http.ResponseWriter, r *http.Request, _ v1alpha1.ListContainersParams) {
+func (b *blockingListHandler) ListContainers(_ http.ResponseWriter, r *http.Request, _ v1alpha1.ListContainersParams) {
 	<-r.Context().Done()
 	close(b.ctxCancelled)
 }
 
 var _ = Describe("HTTP Server", func() {
-
 	// startServer is a helper that creates a server with the given config,
 	// starts it in a goroutine, and returns the address, cancel/cleanup
 	// functions.
@@ -693,7 +692,6 @@ var _ = Describe("HTTP Server", func() {
 
 		// Start a request that will block for 30s.
 		go func() {
-			//nolint:errcheck // We expect this to fail when the server shuts down.
 			resp, err := http.Get(fmt.Sprintf("http://%s/test/block", addr))
 			if err == nil {
 				_ = resp.Body.Close()
@@ -801,7 +799,6 @@ var _ = Describe("HTTP Server", func() {
 		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 
 		go func() {
-			//nolint:errcheck // response may be incomplete due to timeout
 			resp, err := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers", addr))
 			if err == nil {
 				_ = resp.Body.Close()

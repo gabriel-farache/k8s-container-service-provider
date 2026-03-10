@@ -77,8 +77,8 @@ func containerWithPorts(name string, ports ...int) v1alpha1.Container {
 }
 
 // containerWithVisiblePorts creates a container where all ports share the given visibility.
-func containerWithVisiblePorts(name string, visibility v1alpha1.ContainerPortVisibility, ports ...int) v1alpha1.Container {
-	c := minimalContainer(name)
+func containerWithVisiblePorts(visibility v1alpha1.ContainerPortVisibility, ports ...int) v1alpha1.Container {
+	c := minimalContainer("my-app")
 	containerPorts := make([]v1alpha1.ContainerPort, len(ports))
 	for i, p := range ports {
 		containerPorts[i] = v1alpha1.ContainerPort{
@@ -113,13 +113,13 @@ func withDeploymentStatus(status appsv1.DeploymentStatus) fakeDeployOption {
 	return func(d *appsv1.Deployment) { d.Status = status }
 }
 
-func createFakeDeployment(client kubernetes.Interface, namespace, name, instanceID string, opts ...fakeDeployOption) error {
+func createFakeDeployment(client kubernetes.Interface, name, instanceID string, opts ...fakeDeployOption) error {
 	labels := dcmLabels(instanceID)
 	replicas := int32(1)
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: "default",
 			Labels:    labels,
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -145,7 +145,7 @@ func createFakeDeployment(client kubernetes.Interface, namespace, name, instance
 	for _, opt := range opts {
 		opt(deploy)
 	}
-	_, err := client.AppsV1().Deployments(namespace).Create(context.Background(), deploy, metav1.CreateOptions{})
+	_, err := client.AppsV1().Deployments("default").Create(context.Background(), deploy, metav1.CreateOptions{})
 	return err
 }
 
@@ -161,12 +161,12 @@ func withCreationTime(t time.Time) fakePodOption {
 	return func(p *corev1.Pod) { p.CreationTimestamp = metav1.NewTime(t) }
 }
 
-func createFakePod(client kubernetes.Interface, namespace, name, instanceID string, phase corev1.PodPhase, podIP string, opts ...fakePodOption) error {
+func createFakePod(client kubernetes.Interface, name, instanceID string, phase corev1.PodPhase, podIP string, opts ...fakePodOption) error {
 	labels := dcmLabels(instanceID)
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: "default",
 			Labels:    labels,
 		},
 		Status: corev1.PodStatus{
@@ -177,7 +177,7 @@ func createFakePod(client kubernetes.Interface, namespace, name, instanceID stri
 	for _, opt := range opts {
 		opt(pod)
 	}
-	_, err := client.CoreV1().Pods(namespace).Create(context.Background(), pod, metav1.CreateOptions{})
+	_, err := client.CoreV1().Pods("default").Create(context.Background(), pod, metav1.CreateOptions{})
 	return err
 }
 

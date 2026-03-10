@@ -34,7 +34,7 @@ func MapPodPhaseToStatus(phase corev1.PodPhase) (v1alpha1.ContainerStatus, bool)
 
 // containerFromDeployment reconstructs an API Container from a Kubernetes Deployment.
 // It reverse-maps Deployment spec fields back to the API representation.
-func containerFromDeployment(deploy *appsv1.Deployment, instanceID string) (v1alpha1.Container, error) {
+func containerFromDeployment(deploy *appsv1.Deployment, instanceID string) v1alpha1.Container {
 	containers := deploy.Spec.Template.Spec.Containers
 	id := instanceID
 	path := fmt.Sprintf("containers/%s", instanceID)
@@ -82,7 +82,7 @@ func containerFromDeployment(deploy *appsv1.Deployment, instanceID string) (v1al
 		c.Metadata.Labels = &userLabels
 	}
 
-	return c, nil
+	return c
 }
 
 // resourcesFromContainer extracts CPU and memory resources from a K8s container spec.

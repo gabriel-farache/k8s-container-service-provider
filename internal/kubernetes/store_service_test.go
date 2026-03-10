@@ -12,11 +12,10 @@ import (
 
 var _ = Describe("K8s Store", func() {
 	Describe("Service Creation", func() {
-
 		// TC-I019: Service created for port with internal visibility
 		It("creates ClusterIP Service for port with internal visibility (TC-I019)", func() {
 			s, client := newTestStore(defaultConfig())
-			c := containerWithVisiblePorts("my-app", v1alpha1.Internal, 8080)
+			c := containerWithVisiblePorts(v1alpha1.Internal, 8080)
 
 			_, err := s.Create(context.Background(), c, "test-id-019")
 			Expect(err).NotTo(HaveOccurred())
@@ -31,7 +30,7 @@ var _ = Describe("K8s Store", func() {
 		// TC-I022: Multiple internal ports in single Service
 		It("includes all internal ports in a single Service (TC-I022)", func() {
 			s, client := newTestStore(defaultConfig())
-			c := containerWithVisiblePorts("my-app", v1alpha1.Internal, 8080, 9090)
+			c := containerWithVisiblePorts(v1alpha1.Internal, 8080, 9090)
 
 			_, err := s.Create(context.Background(), c, "test-id-022")
 			Expect(err).NotTo(HaveOccurred())
@@ -45,7 +44,7 @@ var _ = Describe("K8s Store", func() {
 		// TC-I090: Multi-port Service has named ports for K8s compliance
 		It("assigns unique names to each ServicePort (TC-I090)", func() {
 			s, client := newTestStore(defaultConfig())
-			c := containerWithVisiblePorts("my-app", v1alpha1.Internal, 8080, 9090, 3000)
+			c := containerWithVisiblePorts(v1alpha1.Internal, 8080, 9090, 3000)
 
 			_, err := s.Create(context.Background(), c, "test-id-090")
 			Expect(err).NotTo(HaveOccurred())
@@ -61,7 +60,7 @@ var _ = Describe("K8s Store", func() {
 		// TC-I023: Internal-only ports produce ClusterIP Service
 		It("uses ClusterIP for internal-only ports (TC-I023)", func() {
 			s, client := newTestStore(defaultConfig())
-			c := containerWithVisiblePorts("my-app", v1alpha1.Internal, 8080)
+			c := containerWithVisiblePorts(v1alpha1.Internal, 8080)
 
 			_, err := s.Create(context.Background(), c, "test-id-023")
 			Expect(err).NotTo(HaveOccurred())
@@ -76,7 +75,7 @@ var _ = Describe("K8s Store", func() {
 			cfg := defaultConfig()
 			cfg.DefaultServiceType = "LoadBalancer"
 			s, client := newTestStore(cfg)
-			c := containerWithVisiblePorts("my-app", v1alpha1.External, 8080)
+			c := containerWithVisiblePorts(v1alpha1.External, 8080)
 
 			_, err := s.Create(context.Background(), c, "test-id-024")
 			Expect(err).NotTo(HaveOccurred())
@@ -119,7 +118,7 @@ var _ = Describe("K8s Store", func() {
 		// TC-I027: Service carries DCM labels with internal visibility
 		It("carries DCM labels on Service (TC-I027)", func() {
 			s, client := newTestStore(defaultConfig())
-			c := containerWithVisiblePorts("my-app", v1alpha1.Internal, 8080)
+			c := containerWithVisiblePorts(v1alpha1.Internal, 8080)
 
 			_, err := s.Create(context.Background(), c, "abc-123")
 			Expect(err).NotTo(HaveOccurred())
@@ -137,7 +136,7 @@ var _ = Describe("K8s Store", func() {
 			cfg := defaultConfig()
 			cfg.DefaultServiceType = "NodePort"
 			s, client := newTestStore(cfg)
-			c := containerWithVisiblePorts("my-app", v1alpha1.External, 8080)
+			c := containerWithVisiblePorts(v1alpha1.External, 8080)
 
 			_, err := s.Create(context.Background(), c, "test-id-074")
 			Expect(err).NotTo(HaveOccurred())
@@ -190,13 +189,13 @@ var _ = Describe("K8s Store", func() {
 		// TC-I093: GET infers internal when Service is ClusterIP
 		It("infers internal visibility when Service is ClusterIP (TC-I093)", func() {
 			s, client := newTestStore(defaultConfig())
-			c := containerWithVisiblePorts("my-app", v1alpha1.Internal, 8080)
+			c := containerWithVisiblePorts(v1alpha1.Internal, 8080)
 
 			created, err := s.Create(context.Background(), c, "test-id-093")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Create a matching Pod so Get can succeed
-			err = createFakePod(client, "default", "my-app-pod", "test-id-093", "Running", "10.0.0.1")
+			err = createFakePod(client, "my-app-pod", "test-id-093", "Running", "10.0.0.1")
 			Expect(err).NotTo(HaveOccurred())
 
 			got, err := s.Get(context.Background(), *created.Id)
@@ -213,13 +212,13 @@ var _ = Describe("K8s Store", func() {
 			cfg := defaultConfig()
 			cfg.DefaultServiceType = "LoadBalancer"
 			s, client := newTestStore(cfg)
-			c := containerWithVisiblePorts("my-app", v1alpha1.External, 8080)
+			c := containerWithVisiblePorts(v1alpha1.External, 8080)
 
 			created, err := s.Create(context.Background(), c, "test-id-094")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Create a matching Pod so Get can succeed
-			err = createFakePod(client, "default", "my-app-pod", "test-id-094", "Running", "10.0.0.1")
+			err = createFakePod(client, "my-app-pod", "test-id-094", "Running", "10.0.0.1")
 			Expect(err).NotTo(HaveOccurred())
 
 			got, err := s.Get(context.Background(), *created.Id)
@@ -240,7 +239,7 @@ var _ = Describe("K8s Store", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Create a matching Pod so Get can succeed
-			err = createFakePod(client, "default", "my-app-pod", "test-id-095", "Running", "10.0.0.1")
+			err = createFakePod(client, "my-app-pod", "test-id-095", "Running", "10.0.0.1")
 			Expect(err).NotTo(HaveOccurred())
 
 			got, err := s.Get(context.Background(), *created.Id)

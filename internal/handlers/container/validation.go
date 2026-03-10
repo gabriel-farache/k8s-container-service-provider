@@ -28,7 +28,6 @@ func validateResources(res v1alpha1.ContainerResources) error {
 	return nil
 }
 
-//nolint:gocritic // ptrToRefParam: Labels is *map[string]string in the generated API type
 func validateUserLabels(labels *map[string]string) error {
 	if labels == nil {
 		return nil

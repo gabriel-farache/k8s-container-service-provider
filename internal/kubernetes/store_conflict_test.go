@@ -22,13 +22,12 @@ import (
 
 var _ = Describe("K8s Store", func() {
 	Describe("Conflict & Namespace", func() {
-
 		// TC-I028: Create returns conflict when Deployment name already exists
 		It("returns conflict when Deployment name already exists (TC-I028)", func() {
 			s, client := newTestStore(defaultConfig())
 
 			// Pre-create a Deployment with name "web-app"
-			err := createFakeDeployment(client, "default", "web-app", "original-id")
+			err := createFakeDeployment(client, "web-app", "original-id")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Attempt to create with the same name but different ID
@@ -51,7 +50,7 @@ var _ = Describe("K8s Store", func() {
 				DefaultServiceType: "ClusterIP",
 			}
 			s, client := newTestStore(cfg)
-			c := containerWithVisiblePorts("my-app", v1alpha1.Internal, 8080)
+			c := containerWithVisiblePorts(v1alpha1.Internal, 8080)
 
 			_, err := s.Create(context.Background(), c, "test-id-029")
 			Expect(err).NotTo(HaveOccurred())
@@ -75,11 +74,11 @@ var _ = Describe("K8s Store", func() {
 			s := k8sstore.NewK8sContainerStore(client, cfg, logger)
 
 			// Inject a Service creation error
-			client.PrependReactor("create", "services", func(action k8stesting.Action) (bool, runtime.Object, error) {
+			client.PrependReactor("create", "services", func(_ k8stesting.Action) (bool, runtime.Object, error) {
 				return true, nil, fmt.Errorf("simulated service creation failure")
 			})
 
-			c := containerWithVisiblePorts("my-app", v1alpha1.Internal, 8080)
+			c := containerWithVisiblePorts(v1alpha1.Internal, 8080)
 			_, err := s.Create(context.Background(), c, "test-id-088")
 
 			// Error should propagate
@@ -108,7 +107,7 @@ var _ = Describe("K8s Store", func() {
 			s := k8sstore.NewK8sContainerStore(client, cfg, logger)
 
 			// Inject a K8s API error on Deployment creation
-			client.PrependReactor("create", "deployments", func(action k8stesting.Action) (bool, runtime.Object, error) {
+			client.PrependReactor("create", "deployments", func(_ k8stesting.Action) (bool, runtime.Object, error) {
 				return true, nil, apierrors.NewInternalError(fmt.Errorf("etcd cluster unavailable"))
 			})
 
