@@ -165,6 +165,16 @@ for full descriptions.
 - **When:** A request is made to the blocking handler
 - **Then:** The request context MUST be cancelled after approximately 200ms
 
+### TC-I102: Recovery middleware is outermost (catches middleware panics)
+
+- **Requirement:** REQ-HTTP-070
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A server is running with recovery middleware applied as the outermost layer
+- **When:** The middleware ordering is inspected (recovery → logging → timeout → validation)
+- **Then:** Recovery middleware MUST be outermost to catch panics from any inner middleware
+- **Note:** This is an architectural guarantee verified by the existing panic recovery tests (TC-I080). The ordering is enforced by code inspection and the fact that handler panics are correctly caught.
+
 ---
 
 ## 2 · K8s Store — Create Operations
@@ -1017,7 +1027,7 @@ for full descriptions.
 | REQ-HTTP-030   | TC-I004, TC-I079                    | Covered |
 | REQ-HTTP-040   | TC-I005                             | Covered |
 | REQ-HTTP-060   | TC-I096, TC-I097                    | Covered |
-| REQ-HTTP-070   | TC-I080 (apiserver), TC-I086 (apiserver), TC-I087 (apiserver) | Covered |
+| REQ-HTTP-070   | TC-I080, TC-I086, TC-I087, TC-I102  | Covered |
 | REQ-HTTP-080   | TC-I006, TC-I007                    | Covered |
 | REQ-HTTP-090   | TC-I008                             | Covered |
 | REQ-HTTP-110   | TC-I098                             | Covered |

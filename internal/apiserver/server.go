@@ -278,8 +278,8 @@ func New(cfg *config.Config, logger *slog.Logger, handler oapigen.ServerInterfac
 	badReq := newBadRequestHandler(logger)
 
 	r := chi.NewRouter()
-	r.Use(requestLoggingMiddleware(logger))
 	r.Use(rfc7807RecoveryMiddleware(logger))
+	r.Use(requestLoggingMiddleware(logger))
 	r.Use(requestTimeoutMiddleware(cfg.Server.RequestTimeout))
 
 	// Load OpenAPI spec for request validation middleware.
