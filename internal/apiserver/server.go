@@ -35,14 +35,15 @@ type Server struct {
 // by the parameter binding layer (generated chi wrapper) and OpenAPI
 // validation middleware.
 func newBadRequestHandler(logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
-	return func(w http.ResponseWriter, _ *http.Request, err error) {
+	return func(w http.ResponseWriter, r *http.Request, err error) {
 		status := int32(http.StatusBadRequest)
 		detail := scrubValidationError(err)
 		resp := v1alpha1.Error{
-			Type:   v1alpha1.INVALIDARGUMENT,
-			Title:  "Bad Request",
-			Status: util.Ptr(status),
-			Detail: util.Ptr(detail),
+			Type:     v1alpha1.INVALIDARGUMENT,
+			Title:    "Bad Request",
+			Status:   util.Ptr(status),
+			Detail:   util.Ptr(detail),
+			Instance: requestInstance(r),
 		}
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -50,6 +51,43 @@ func newBadRequestHandler(logger *slog.Logger) func(http.ResponseWriter, *http.R
 			logger.Error("failed to encode error response", "error", encErr)
 		}
 	}
+}
+
+// NewRequestErrorHandler returns an error handler for the strict adapter's
+// RequestErrorHandlerFunc that writes an RFC 7807 INVALID_ARGUMENT response.
+func NewRequestErrorHandler(logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
+	return newBadRequestHandler(logger)
+}
+
+// NewResponseErrorHandler returns an error handler for the strict adapter's
+// ResponseErrorHandlerFunc that writes an RFC 7807 INTERNAL response without
+// exposing implementation details.
+func NewResponseErrorHandler(logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
+	return func(w http.ResponseWriter, r *http.Request, err error) {
+		logger.Error("strict handler response error", "error", err)
+		status := int32(http.StatusInternalServerError)
+		resp := v1alpha1.Error{
+			Type:     v1alpha1.INTERNAL,
+			Title:    "Internal Server Error",
+			Status:   util.Ptr(status),
+			Detail:   util.Ptr("an unexpected error occurred"),
+			Instance: requestInstance(r),
+		}
+		w.Header().Set("Content-Type", "application/problem+json")
+		w.WriteHeader(http.StatusInternalServerError)
+		if encErr := json.NewEncoder(w).Encode(resp); encErr != nil {
+			logger.Error("failed to encode error response", "error", encErr)
+		}
+	}
+}
+
+// requestInstance returns a pointer to the request URI for use as the
+// RFC 7807 instance field. Returns nil if the request is nil.
+func requestInstance(r *http.Request) *string {
+	if r == nil {
+		return nil
+	}
+	return util.Ptr(r.URL.Path)
 }
 
 // readinessProbeTimeout is how long to wait for the server to confirm it is
@@ -119,20 +157,25 @@ func scrubValidationError(err error) string {
 }
 
 // statusRecordingResponseWriter wraps an http.ResponseWriter to track
-// whether headers have already been sent to the client. The recovery
-// middleware uses this to avoid writing a second status line after the
-// handler has already called WriteHeader or Write.
+// whether headers have already been sent to the client and the response
+// status code. The recovery middleware uses wroteHeader to avoid writing
+// a second status line; the logging middleware reads statusCode.
 type statusRecordingResponseWriter struct {
 	http.ResponseWriter
 	wroteHeader bool
+	statusCode  int
 }
 
 func (w *statusRecordingResponseWriter) WriteHeader(code int) {
 	w.wroteHeader = true
+	w.statusCode = code
 	w.ResponseWriter.WriteHeader(code)
 }
 
 func (w *statusRecordingResponseWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.statusCode = http.StatusOK
+	}
 	w.wroteHeader = true
 	return w.ResponseWriter.Write(b)
 }
@@ -179,10 +222,11 @@ func rfc7807RecoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Hand
 
 					status := int32(http.StatusInternalServerError)
 					resp := v1alpha1.Error{
-						Type:   v1alpha1.INTERNAL,
-						Title:  "Internal Server Error",
-						Status: util.Ptr(status),
-						Detail: util.Ptr("an unexpected error occurred"),
+						Type:     v1alpha1.INTERNAL,
+						Title:    "Internal Server Error",
+						Status:   util.Ptr(status),
+						Detail:   util.Ptr("an unexpected error occurred"),
+						Instance: requestInstance(r),
 					}
 					w.Header().Set("Content-Type", "application/problem+json")
 					w.WriteHeader(http.StatusInternalServerError)
@@ -192,6 +236,39 @@ func rfc7807RecoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Hand
 				}
 			}()
 			next.ServeHTTP(sw, r)
+		})
+	}
+}
+
+// requestTimeoutMiddleware cancels the request context after the configured
+// timeout. A zero timeout disables the middleware.
+func requestTimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		if timeout <= 0 {
+			return next
+		}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithTimeout(r.Context(), timeout)
+			defer cancel()
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// requestLoggingMiddleware logs each HTTP request at INFO level with method,
+// path, response status code, and duration.
+func requestLoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			sw := &statusRecordingResponseWriter{ResponseWriter: w}
+			next.ServeHTTP(sw, r)
+			logger.Info("http request",
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", sw.statusCode,
+				"duration", time.Since(start).String(),
+			)
 		})
 	}
 }
@@ -237,7 +314,9 @@ func New(cfg *config.Config, logger *slog.Logger, handler oapigen.ServerInterfac
 	badReq := newBadRequestHandler(logger)
 
 	r := chi.NewRouter()
+	r.Use(requestLoggingMiddleware(logger))
 	r.Use(rfc7807RecoveryMiddleware(logger))
+	r.Use(requestTimeoutMiddleware(cfg.Server.RequestTimeout))
 
 	// Load OpenAPI spec for request validation middleware.
 	spec, err := v1alpha1.GetSwagger()
@@ -256,13 +335,14 @@ func New(cfg *config.Config, logger *slog.Logger, handler oapigen.ServerInterfac
 	// Reject trailing-slash requests with empty container_id before the
 	// generated router sees them. Chi treats /containers/ as a distinct
 	// path from /containers/{container_id}, so without this route it would 404.
-	emptyIDHandler := func(w http.ResponseWriter, _ *http.Request) {
+	emptyIDHandler := func(w http.ResponseWriter, r *http.Request) {
 		status := int32(http.StatusBadRequest)
 		resp := v1alpha1.Error{
-			Type:   v1alpha1.INVALIDARGUMENT,
-			Title:  "Bad Request",
-			Status: util.Ptr(status),
-			Detail: util.Ptr("container_id is required and cannot be empty"),
+			Type:     v1alpha1.INVALIDARGUMENT,
+			Title:    "Bad Request",
+			Status:   util.Ptr(status),
+			Detail:   util.Ptr("container_id is required and cannot be empty"),
+			Instance: requestInstance(r),
 		}
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusBadRequest)

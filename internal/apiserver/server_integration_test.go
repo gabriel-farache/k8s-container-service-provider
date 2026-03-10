@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/signal"
 	"sync"
@@ -75,6 +76,18 @@ type headersThenPanicOnListHandler struct {
 func (h *headersThenPanicOnListHandler) ListContainers(w http.ResponseWriter, _ *http.Request, _ v1alpha1.ListContainersParams) {
 	w.WriteHeader(http.StatusTeapot)
 	panic("boom after headers")
+}
+
+// blockingListHandler implements ServerInterface, blocking on ListContainers
+// until the request context is cancelled. Used to test the timeout middleware.
+type blockingListHandler struct {
+	oapigen.Unimplemented
+	ctxCancelled chan struct{}
+}
+
+func (b *blockingListHandler) ListContainers(w http.ResponseWriter, r *http.Request, _ v1alpha1.ListContainersParams) {
+	<-r.Context().Done()
+	close(b.ctxCancelled)
 }
 
 var _ = Describe("HTTP Server", func() {
@@ -705,5 +718,123 @@ var _ = Describe("HTTP Server", func() {
 		var serverErr error
 		Eventually(errCh).WithTimeout(2 * time.Second).Should(Receive(&serverErr))
 		Expect(serverErr).To(MatchError(context.DeadlineExceeded))
+	})
+
+	// TC-U070: ResponseErrorHandlerFunc returns RFC 7807
+	It("ResponseErrorHandlerFunc returns RFC 7807 INTERNAL response (TC-U070)", func() {
+		var logBuf syncBuffer
+		logger := slog.New(slog.NewJSONHandler(&logBuf, nil))
+		handler := apiserver.NewResponseErrorHandler(logger)
+
+		w := httptest.NewRecorder()
+		handler(w, nil, fmt.Errorf("database connection lost"))
+
+		Expect(w.Code).To(Equal(http.StatusInternalServerError))
+		Expect(w.Header().Get("Content-Type")).To(Equal("application/problem+json"))
+
+		var problemJSON map[string]any
+		Expect(json.Unmarshal(w.Body.Bytes(), &problemJSON)).To(Succeed())
+		Expect(problemJSON).To(HaveKeyWithValue("type", "INTERNAL"))
+		Expect(problemJSON).To(HaveKeyWithValue("title", "Internal Server Error"))
+		Expect(problemJSON["status"]).To(BeNumerically("==", 500))
+		Expect(problemJSON).To(HaveKeyWithValue("detail", "an unexpected error occurred"))
+
+		// Must not leak the raw error message.
+		bodyStr := w.Body.String()
+		Expect(bodyStr).NotTo(ContainSubstring("database connection lost"))
+	})
+
+	// TC-I096: Request logging — successful request
+	It("logs HTTP requests with method, path, status, and duration (TC-I096)", func() {
+		var logBuf syncBuffer
+		addr, cancel, errCh := startServer(defaultConfig(), &logBuf, nil)
+		defer func() {
+			cancel()
+			Eventually(errCh).WithTimeout(10 * time.Second).Should(Receive())
+		}()
+
+		resp, err := http.Get(fmt.Sprintf("http://%s/health", addr))
+		Expect(err).NotTo(HaveOccurred())
+		resp.Body.Close()
+
+		Eventually(func() string {
+			return logBuf.String()
+		}).WithTimeout(2 * time.Second).WithPolling(50 * time.Millisecond).Should(And(
+			ContainSubstring(`"method":"GET"`),
+			ContainSubstring(`"path":"/health"`),
+			ContainSubstring(`"status":200`),
+			ContainSubstring(`"duration"`),
+		))
+	})
+
+	// TC-I098: Request timeout cancels long-running requests
+	It("cancels request context after configured timeout (TC-I098)", func() {
+		shortTimeoutCfg := &config.Config{
+			Server: config.ServerConfig{
+				Address:         ":0",
+				ShutdownTimeout: 5 * time.Second,
+				RequestTimeout:  200 * time.Millisecond,
+			},
+		}
+
+		ctxCancelled := make(chan struct{})
+		bh := &blockingListHandler{ctxCancelled: ctxCancelled}
+		logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
+		srv := apiserver.New(shortTimeoutCfg, logger, bh)
+
+		ln, err := net.Listen("tcp", ":0")
+		Expect(err).NotTo(HaveOccurred())
+		addr := ln.Addr().String()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		errCh := make(chan error, 1)
+		go func() {
+			errCh <- srv.Run(ctx, ln)
+		}()
+		defer func() {
+			cancel()
+			Eventually(errCh).WithTimeout(10 * time.Second).Should(Receive())
+		}()
+
+		// Wait for the server to be ready.
+		Eventually(func() error {
+			resp, reqErr := http.Get(fmt.Sprintf("http://%s/health", addr))
+			if reqErr != nil {
+				return reqErr
+			}
+			resp.Body.Close()
+			return nil
+		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
+
+		go func() {
+			//nolint:errcheck // response may be incomplete due to timeout
+			resp, err := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers", addr))
+			if err == nil {
+				resp.Body.Close()
+			}
+		}()
+
+		// The context should be cancelled within ~200ms by the timeout middleware.
+		Eventually(ctxCancelled).WithTimeout(2 * time.Second).Should(BeClosed())
+	})
+
+	// TC-I097: Request logging — error request
+	It("logs HTTP error requests with correct status (TC-I097)", func() {
+		var logBuf syncBuffer
+		addr, cancel, errCh := startServer(defaultConfig(), &logBuf, nil)
+		defer func() {
+			cancel()
+			Eventually(errCh).WithTimeout(10 * time.Second).Should(Receive())
+		}()
+
+		resp, err := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/nonexistent-id", addr))
+		Expect(err).NotTo(HaveOccurred())
+		resp.Body.Close()
+
+		Eventually(func() string {
+			return logBuf.String()
+		}).WithTimeout(2 * time.Second).WithPolling(50 * time.Millisecond).Should(
+			ContainSubstring(`"status":500`),
+		)
 	})
 })

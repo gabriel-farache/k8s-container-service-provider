@@ -31,6 +31,8 @@ func NewHandler(repo store.ContainerRepository, logger *slog.Logger, startTime t
 	}
 }
 
+const containersBasePath = "/api/v1alpha1/containers"
+
 func (h *Handler) CreateContainer(ctx context.Context, req oapigen.CreateContainerRequestObject) (oapigen.CreateContainerResponseObject, error) {
 	var id string
 	if req.Params.Id != nil {
@@ -39,32 +41,36 @@ func (h *Handler) CreateContainer(ctx context.Context, req oapigen.CreateContain
 		id = uuid.New().String()
 	}
 
+	requestPath := containersBasePath
+
 	if err := validateResources(req.Body.Resources); err != nil {
-		return newCreateError400(err.Error()), nil
+		return newCreateError400(err.Error(), requestPath), nil
 	}
 
 	if err := validateUserLabels(req.Body.Metadata.Labels); err != nil {
-		return newCreateError400(err.Error()), nil
+		return newCreateError400(err.Error(), requestPath), nil
 	}
 
 	result, err := h.store.Create(ctx, *req.Body, id)
 	if err != nil {
-		return h.mapCreateError(err), nil
+		return h.mapCreateError(err, requestPath), nil
 	}
 	return oapigen.CreateContainer201JSONResponse(*result), nil
 }
 
 func (h *Handler) GetContainer(ctx context.Context, req oapigen.GetContainerRequestObject) (oapigen.GetContainerResponseObject, error) {
+	requestPath := containersBasePath + "/" + req.ContainerId
 	result, err := h.store.Get(ctx, req.ContainerId)
 	if err != nil {
-		return h.mapGetError(err), nil
+		return h.mapGetError(err, requestPath), nil
 	}
 	return oapigen.GetContainer200JSONResponse(*result), nil
 }
 
 func (h *Handler) DeleteContainer(ctx context.Context, req oapigen.DeleteContainerRequestObject) (oapigen.DeleteContainerResponseObject, error) {
+	requestPath := containersBasePath + "/" + req.ContainerId
 	if err := h.store.Delete(ctx, req.ContainerId); err != nil {
-		return h.mapDeleteError(err), nil
+		return h.mapDeleteError(err, requestPath), nil
 	}
 	return oapigen.DeleteContainer204Response{}, nil
 }
@@ -86,7 +92,7 @@ func (h *Handler) ListContainers(ctx context.Context, req oapigen.ListContainers
 
 	result, err := h.store.List(ctx, maxPageSize, pageToken)
 	if err != nil {
-		return h.mapListError(err), nil
+		return h.mapListError(err, containersBasePath), nil
 	}
 	return oapigen.ListContainers200JSONResponse(*result), nil
 }

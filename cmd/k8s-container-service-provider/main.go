@@ -61,7 +61,10 @@ func run(logger *slog.Logger) error {
 	store := k8s.NewK8sContainerStore(k8sClient, k8sCfg, logger)
 
 	containerHandler := containerhandler.NewHandler(store, logger, time.Now(), version)
-	strictAdapter := oapigen.NewStrictHandlerWithOptions(containerHandler, nil, oapigen.StrictHTTPServerOptions{})
+	strictAdapter := oapigen.NewStrictHandlerWithOptions(containerHandler, nil, oapigen.StrictHTTPServerOptions{
+		RequestErrorHandlerFunc:  apiserver.NewRequestErrorHandler(logger),
+		ResponseErrorHandlerFunc: apiserver.NewResponseErrorHandler(logger),
+	})
 
 	srv := apiserver.New(cfg, logger, strictAdapter).WithOnReady(registrar.Start)
 

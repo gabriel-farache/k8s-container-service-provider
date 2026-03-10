@@ -458,6 +458,7 @@ components:
           type: string
           description: Resource name identifier
           pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+          minLength: 1
           maxLength: 63
         labels:
           type: object

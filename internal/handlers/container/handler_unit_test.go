@@ -488,6 +488,121 @@ var _ = Describe("Container API Handlers", func() {
 	})
 
 	// -----------------------------------------------------------------------
+	// Instance field in error responses
+	// -----------------------------------------------------------------------
+	Describe("Instance field", func() {
+
+		// TC-U071: handler error responses include instance field
+		DescribeTable("error responses include instance field (TC-U071)",
+			func(
+				setup func(),
+				callHandler func(oapigen.StrictServerInterface) (interface{}, error),
+				expectedInstance string,
+				assertInstance func(interface{}, string),
+			) {
+				setup()
+				resp, err := callHandler(h)
+				Expect(err).NotTo(HaveOccurred())
+				assertInstance(resp, expectedInstance)
+			},
+
+			Entry("CreateContainer 409 (conflict)",
+				func() {
+					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
+						return nil, &store.ConflictError{Message: "dup"}
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					body := validCreateBody()
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &body})
+				},
+				"/api/v1alpha1/containers",
+				func(resp interface{}, expected string) {
+					errResp, ok := resp.(oapigen.CreateContainer409ApplicationProblemPlusJSONResponse)
+					Expect(ok).To(BeTrue())
+					Expect(errResp.Instance).NotTo(BeNil(), "instance must be set")
+					Expect(*errResp.Instance).To(Equal(expected))
+				},
+			),
+
+			Entry("GetContainer 404 (not found)",
+				func() {
+					repo.GetFunc = func(_ context.Context, id string) (*v1alpha1.Container, error) {
+						return nil, &store.NotFoundError{ID: id}
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					return s.GetContainer(context.Background(), oapigen.GetContainerRequestObject{ContainerId: "test-id"})
+				},
+				"/api/v1alpha1/containers/test-id",
+				func(resp interface{}, expected string) {
+					errResp, ok := resp.(oapigen.GetContainer404ApplicationProblemPlusJSONResponse)
+					Expect(ok).To(BeTrue())
+					Expect(errResp.Instance).NotTo(BeNil(), "instance must be set")
+					Expect(*errResp.Instance).To(Equal(expected))
+				},
+			),
+
+			Entry("DeleteContainer 404 (not found)",
+				func() {
+					repo.DeleteFunc = func(_ context.Context, id string) error {
+						return &store.NotFoundError{ID: id}
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					return s.DeleteContainer(context.Background(), oapigen.DeleteContainerRequestObject{ContainerId: "test-id"})
+				},
+				"/api/v1alpha1/containers/test-id",
+				func(resp interface{}, expected string) {
+					errResp, ok := resp.(oapigen.DeleteContainer404ApplicationProblemPlusJSONResponse)
+					Expect(ok).To(BeTrue())
+					Expect(errResp.Instance).NotTo(BeNil(), "instance must be set")
+					Expect(*errResp.Instance).To(Equal(expected))
+				},
+			),
+
+			Entry("ListContainers 400 (invalid page token)",
+				func() {
+					repo.ListFunc = func(_ context.Context, _ int32, _ string) (*v1alpha1.ContainerList, error) {
+						return nil, &store.InvalidArgumentError{Message: "bad token"}
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					return s.ListContainers(context.Background(), oapigen.ListContainersRequestObject{
+						Params: v1alpha1.ListContainersParams{PageToken: util.Ptr("bad")},
+					})
+				},
+				"/api/v1alpha1/containers",
+				func(resp interface{}, expected string) {
+					errResp, ok := resp.(oapigen.ListContainers400ApplicationProblemPlusJSONResponse)
+					Expect(ok).To(BeTrue())
+					Expect(errResp.Instance).NotTo(BeNil(), "instance must be set")
+					Expect(*errResp.Instance).To(Equal(expected))
+				},
+			),
+
+			Entry("CreateContainer 500 (internal error)",
+				func() {
+					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
+						return nil, errors.New("unexpected")
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					body := validCreateBody()
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &body})
+				},
+				"/api/v1alpha1/containers",
+				func(resp interface{}, expected string) {
+					errResp, ok := resp.(oapigen.CreateContainer500ApplicationProblemPlusJSONResponse)
+					Expect(ok).To(BeTrue())
+					Expect(errResp.Instance).NotTo(BeNil(), "instance must be set")
+					Expect(*errResp.Instance).To(Equal(expected))
+				},
+			),
+		)
+	})
+
+	// -----------------------------------------------------------------------
 	// Error handling
 	// -----------------------------------------------------------------------
 	Describe("Error handling", func() {
