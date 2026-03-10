@@ -1107,7 +1107,7 @@ integration, provider capability updates post-registration.
 | REQ-REG-020 | The registration payload MUST include `name`, `service_type`, `endpoint`, `operations`, and optionally `display_name`, `metadata.region_code`/`metadata.zone` | MUST | |
 | REQ-REG-030 | Registration MUST execute asynchronously | MUST | |
 | REQ-REG-031 | Registration MUST NOT block server startup | MUST | |
-| REQ-REG-040 | Registration MUST retry with exponential backoff on failure with a maximum backoff interval | MUST | |
+| REQ-REG-040 | Registration MUST retry with exponential backoff on failure with a maximum backoff interval. Non-retryable errors (4xx client errors) MUST stop retries immediately without further attempts | MUST | |
 | REQ-REG-050 | Registration failures MUST be logged | MUST | |
 | REQ-REG-051 | Registration failures MUST NOT cause the SP to exit | MUST | |
 | REQ-REG-060 | Registration MUST be idempotent: re-registration on restart updates the existing entry (not duplicated) | MUST | |
@@ -1162,6 +1162,15 @@ integration, provider capability updates post-registration.
 - **When** a registration attempt fails
 - **Then** the SP MUST retry with exponential backoff
 - **And** a maximum backoff interval MUST be enforced
+
+##### AC-REG-045: Registration stops on 4xx
+
+- **Validates:** REQ-REG-040
+- **Given** the DCM registry returns a 4xx status code
+- **When** a registration attempt receives this response
+- **Then** the SP MUST NOT retry
+- **And** MUST log the error at ERROR level
+- **And** MUST continue running and serving requests
 
 ##### AC-REG-050: Registration failure logging
 

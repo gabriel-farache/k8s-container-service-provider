@@ -999,6 +999,18 @@ for full descriptions.
 - **When:** Registration completes successfully
 - **Then:** The `Done()` channel MUST close, signaling that the registration process has finished
 
+### TC-I104: Registration stops retrying on 4xx client error
+
+- **Requirement:** REQ-REG-040
+- **AC:** AC-REG-045
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A mock DCM server that returns 400 Bad Request
+- **When:** A registration attempt receives this response
+- **Then:** The registrar MUST NOT retry (no further requests after the first)
+- **And** the error MUST be logged at ERROR level
+- **And** the `Done()` channel MUST close
+
 ---
 
 ## 13 · E2E Placeholders
@@ -1099,7 +1111,7 @@ for full descriptions.
 | REQ-REG-020    | TC-I054, TC-I068                    | Covered |
 | REQ-REG-030    | TC-I055, TC-I083, TC-I084, TC-I087  | Covered |
 | REQ-REG-031    | TC-I055                             | Covered |
-| REQ-REG-040    | TC-I056, TC-I080                    | Covered |
+| REQ-REG-040    | TC-I056, TC-I080, TC-I104           | Covered |
 | REQ-REG-050    | TC-I057                             | Covered |
 | REQ-REG-051    | TC-I057                             | Covered |
 | REQ-REG-060    | TC-I058                             | Covered |

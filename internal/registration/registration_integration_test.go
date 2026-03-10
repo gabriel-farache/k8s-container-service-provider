@@ -545,6 +545,51 @@ var _ = Describe("Registration Integration", func() {
 			"Done() channel should close after context cancellation")
 	})
 
+	// TC-I104: Registration stops retrying on 4xx client error
+	It("stops retrying on 4xx client error (TC-I104)", func() {
+		var requestCount atomic.Int32
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodPost && r.URL.Path == "/providers" {
+				requestCount.Add(1)
+			}
+			w.WriteHeader(http.StatusBadRequest)
+		}))
+
+		cfg = &config.Config{
+			Provider: config.ProviderConfig{
+				Name:        "k8s-sp",
+				DisplayName: "K8s Container SP",
+				Endpoint:    "https://sp.example.com",
+			},
+			DCM: config.DCMConfig{
+				RegistrationURL: mockServer.URL,
+			},
+		}
+
+		registrar, err := registration.NewRegistrar(cfg, logger,
+			registration.SetInitialBackoff(10*time.Millisecond),
+			registration.SetMaxBackoff(50*time.Millisecond),
+		)
+		Expect(err).NotTo(HaveOccurred())
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		registrar.Start(ctx)
+
+		// Done() channel should close because 4xx is non-retryable.
+		Eventually(registrar.Done()).WithTimeout(3*time.Second).Should(BeClosed(),
+			"Done() channel should close after non-retryable 4xx error")
+
+		// Only one request should have been made (no retries).
+		Expect(requestCount.Load()).To(Equal(int32(1)),
+			"expected exactly 1 registration attempt, no retries for 4xx")
+
+		// Error should be logged at ERROR level.
+		Expect(logBuf.String()).To(ContainSubstring(`"level":"ERROR"`))
+		Expect(logBuf.String()).To(ContainSubstring("non-retryable"))
+	})
+
 	// TC-I087: Done() channel closes after successful registration
 	It("Done() channel closes after successful registration (TC-I087)", func() {
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

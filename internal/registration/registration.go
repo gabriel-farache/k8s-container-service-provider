@@ -2,6 +2,7 @@ package registration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -21,6 +22,8 @@ const (
 	schemaVersion = "v1alpha1"
 	httpTimeout   = 30 * time.Second
 )
+
+var errNonRetryable = errors.New("non-retryable")
 
 var endpointSuffix = mustPostPath()
 
@@ -152,6 +155,9 @@ func (r *Registrar) run(ctx context.Context) {
 		if err := r.register(ctx, payload); err == nil {
 			r.logger.Info("registration successful")
 			return
+		} else if errors.Is(err, errNonRetryable) {
+			r.logger.Error("registration failed with non-retryable error, giving up", "error", err)
+			return
 		} else {
 			r.logger.Warn("registration failed, will retry", "error", err)
 		}
@@ -183,6 +189,13 @@ func (r *Registrar) register(ctx context.Context, provider dcmv1alpha1.Provider)
 	}
 
 	sc := resp.StatusCode()
+	if sc >= 400 && sc < 500 {
+		body := resp.Body
+		if len(body) > 200 {
+			body = body[:200]
+		}
+		return fmt.Errorf("registration returned non-retryable status %d: %s: %w", sc, string(body), errNonRetryable)
+	}
 	if sc != http.StatusOK && sc != http.StatusCreated {
 		body := resp.Body
 		if len(body) > 200 {
