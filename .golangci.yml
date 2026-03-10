@@ -1,3 +1,5 @@
+version: "2"
+
 run:
   timeout: 5m
 
@@ -8,21 +10,21 @@ linters:
     - staticcheck
     - unused
     - ineffassign
-    - gosimple
     - gocritic
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+  exclusions:
+    paths:
+      - api/v1alpha1  # generated code
+      - pkg/client    # generated code
+
+formatters:
+  enable:
     - gofmt
-
-linters-settings:
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-
-issues:
-  exclude-dirs:
-    - api/v1alpha1  # generated code
-    - pkg/client    # generated code

@@ -40,7 +40,7 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("listening on %s: %w", cfg.Server.Address, err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()

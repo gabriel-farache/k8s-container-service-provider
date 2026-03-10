@@ -70,7 +70,7 @@ var _ = Describe("K8s Store", func() {
 		// TC-I088: Service creation failure triggers Deployment rollback
 		It("rolls back Deployment when Service creation fails (TC-I088)", func() {
 			cfg := defaultConfig()
-			client := fake.NewSimpleClientset()
+			client := fake.NewClientset()
 			logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 			s := k8sstore.NewK8sContainerStore(client, cfg, logger)
 
@@ -103,7 +103,7 @@ var _ = Describe("K8s Store", func() {
 		// TC-I081: Unexpected K8s API error produces internal store error
 		It("produces internal store error on unexpected K8s API error (TC-I081)", func() {
 			cfg := defaultConfig()
-			client := fake.NewSimpleClientset()
+			client := fake.NewClientset()
 			logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 			s := k8sstore.NewK8sContainerStore(client, cfg, logger)
 

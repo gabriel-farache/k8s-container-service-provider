@@ -14,11 +14,11 @@ var _ = Describe("Configuration", func() {
 
 	// Helper to unset all config-related env vars between tests.
 	clearEnv := func() {
-		os.Unsetenv("SP_SERVER_ADDRESS")
-		os.Unsetenv("SP_SERVER_SHUTDOWN_TIMEOUT")
-		os.Unsetenv("SP_SERVER_READ_TIMEOUT")
-		os.Unsetenv("SP_SERVER_WRITE_TIMEOUT")
-		os.Unsetenv("SP_SERVER_IDLE_TIMEOUT")
+		_ = os.Unsetenv("SP_SERVER_ADDRESS")
+		_ = os.Unsetenv("SP_SERVER_SHUTDOWN_TIMEOUT")
+		_ = os.Unsetenv("SP_SERVER_READ_TIMEOUT")
+		_ = os.Unsetenv("SP_SERVER_WRITE_TIMEOUT")
+		_ = os.Unsetenv("SP_SERVER_IDLE_TIMEOUT")
 		_ = os.Unsetenv("SP_NAME")
 		_ = os.Unsetenv("SP_DISPLAY_NAME")
 		_ = os.Unsetenv("SP_ENDPOINT")
@@ -45,14 +45,14 @@ var _ = Describe("Configuration", func() {
 	// TC-U002: Load configuration from environment variables
 	It("loads configuration from environment variables (TC-U002)", func() {
 		setRequiredEnv()
-		os.Setenv("SP_SERVER_ADDRESS", ":9090")
-		os.Setenv("SP_SERVER_SHUTDOWN_TIMEOUT", "30s")
+		_ = os.Setenv("SP_SERVER_ADDRESS", ":9090")
+		_ = os.Setenv("SP_SERVER_SHUTDOWN_TIMEOUT", "30s")
 		_ = os.Setenv("SP_DISPLAY_NAME", "Test Provider")
 		_ = os.Setenv("SP_REGION", "us-east-1")
 		_ = os.Setenv("SP_ZONE", "us-east-1a")
-		os.Setenv("SP_SERVER_READ_TIMEOUT", "10s")
-		os.Setenv("SP_SERVER_WRITE_TIMEOUT", "20s")
-		os.Setenv("SP_SERVER_IDLE_TIMEOUT", "120s")
+		_ = os.Setenv("SP_SERVER_READ_TIMEOUT", "10s")
+		_ = os.Setenv("SP_SERVER_WRITE_TIMEOUT", "20s")
+		_ = os.Setenv("SP_SERVER_IDLE_TIMEOUT", "120s")
 
 		cfg, err := config.Load()
 		Expect(err).NotTo(HaveOccurred())

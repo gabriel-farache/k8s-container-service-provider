@@ -86,7 +86,7 @@ var _ = Describe("Container API Handlers - Request Validation", func() {
 			if reqErr != nil {
 				return reqErr
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil
 		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 
@@ -104,7 +104,7 @@ var _ = Describe("Container API Handlers - Request Validation", func() {
 				strings.NewReader(bodyJSON),
 			)
 			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			Expect(resp.StatusCode).To(Equal(http.StatusBadRequest),
 				"expected 400 for: %s", description)
@@ -222,7 +222,7 @@ var _ = Describe("Container API Handlers - Request Validation", func() {
 				strings.NewReader(body),
 			)
 			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			Expect(resp.StatusCode).To(Equal(http.StatusBadRequest),
 				"expected 400 for: %s", description)
@@ -255,7 +255,7 @@ var _ = Describe("Container API Handlers - Request Validation", func() {
 				strings.NewReader(body),
 			)
 			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			// Valid ID should pass middleware validation and reach the handler
 			// (not be rejected with 400 by OpenAPI middleware).
@@ -304,7 +304,7 @@ var _ = Describe("Container API Handlers - Request Validation", func() {
 			if reqErr != nil {
 				return reqErr
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil
 		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 
@@ -317,7 +317,7 @@ var _ = Describe("Container API Handlers - Request Validation", func() {
 			strings.NewReader(reqBody),
 		)
 		Expect(err).NotTo(HaveOccurred())
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 		Expect(resp.Header.Get("Content-Type")).NotTo(ContainSubstring("application/problem+json"))

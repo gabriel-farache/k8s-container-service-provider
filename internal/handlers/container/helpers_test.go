@@ -34,11 +34,11 @@ type mockContainerRepository struct {
 	DeleteFunc func(ctx context.Context, containerID string) error
 }
 
-func (m *mockContainerRepository) Create(ctx context.Context, container v1alpha1.Container, id string) (*v1alpha1.Container, error) {
+func (m *mockContainerRepository) Create(ctx context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
 	if m.CreateFunc == nil {
 		panic("unexpected call to Create")
 	}
-	return m.CreateFunc(ctx, container, id)
+	return m.CreateFunc(ctx, c, id)
 }
 
 func (m *mockContainerRepository) Get(ctx context.Context, containerID string) (*v1alpha1.Container, error) {

@@ -275,13 +275,13 @@ func (s *Server) waitForReady(ctx context.Context, addr string) error {
 	defer ticker.Stop()
 
 	for {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 		if err != nil {
 			return fmt.Errorf("creating readiness probe request: %w", err)
 		}
 		resp, err := client.Do(req)
 		if err == nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
 				return nil
 			}
@@ -293,7 +293,6 @@ func (s *Server) waitForReady(ctx context.Context, addr string) error {
 		case <-deadline.C:
 			return fmt.Errorf("server readiness probe timed out after %s", readinessProbeTimeout)
 		case <-ticker.C:
-			// continue polling
 		}
 	}
 }

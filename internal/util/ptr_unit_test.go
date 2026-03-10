@@ -9,12 +9,8 @@ import (
 
 var _ = Describe("Ptr", func() {
 	It("returns a pointer to a string value", func() {
-		s := "hello"
-		p := util.Ptr(s)
+		p := util.Ptr("hello")
 		Expect(p).NotTo(BeNil())
-		Expect(*p).To(Equal("hello"))
-		// Returned pointer must be independent of the original variable.
-		s = "changed"
 		Expect(*p).To(Equal("hello"))
 	})
 

@@ -23,7 +23,7 @@ var _ store.ContainerRepository = (*k8sstore.K8sContainerStore)(nil)
 
 // newTestStore creates a K8sContainerStore backed by a fake clientset.
 func newTestStore(cfg k8sstore.K8sConfig) (*k8sstore.K8sContainerStore, *fake.Clientset) {
-	client := fake.NewSimpleClientset()
+	client := fake.NewClientset()
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 	s := k8sstore.NewK8sContainerStore(client, cfg, logger)
 	return s, client

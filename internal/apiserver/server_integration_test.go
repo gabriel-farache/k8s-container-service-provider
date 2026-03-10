@@ -146,7 +146,7 @@ var _ = Describe("HTTP Server", func() {
 			if reqErr != nil {
 				return reqErr
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil
 		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 
@@ -172,7 +172,7 @@ var _ = Describe("HTTP Server", func() {
 
 		resp, err := http.Get(fmt.Sprintf("http://%s/health", addr))
 		Expect(err).NotTo(HaveOccurred())
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 	})
 
@@ -200,12 +200,12 @@ var _ = Describe("HTTP Server", func() {
 		}
 
 		for _, rc := range routes {
-			req, err := http.NewRequest(rc.method, baseURL+rc.path, nil)
+			req, err := http.NewRequest(rc.method, baseURL+rc.path, http.NoBody)
 			Expect(err).NotTo(HaveOccurred(), "route: %s %s", rc.method, rc.path)
 
 			resp, err := http.DefaultClient.Do(req)
 			Expect(err).NotTo(HaveOccurred(), "route: %s %s", rc.method, rc.path)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 
 			Expect(resp.StatusCode).NotTo(Equal(http.StatusNotFound),
 				"route %s %s should not return 404", rc.method, rc.path)
@@ -224,7 +224,7 @@ var _ = Describe("HTTP Server", func() {
 
 		resp, err := http.Get(fmt.Sprintf("http://%s/undefined-path", addr))
 		Expect(err).NotTo(HaveOccurred())
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		Expect(resp.StatusCode).To(SatisfyAny(
 			Equal(http.StatusNotFound),
@@ -278,7 +278,7 @@ var _ = Describe("HTTP Server", func() {
 		var res result
 		Eventually(respCh).WithTimeout(5 * time.Second).Should(Receive(&res))
 		Expect(res.err).NotTo(HaveOccurred())
-		defer res.resp.Body.Close()
+		defer func() { _ = res.resp.Body.Close() }()
 		Expect(res.resp.StatusCode).To(Equal(http.StatusOK))
 
 		// Server should exit cleanly after draining.
@@ -330,7 +330,7 @@ var _ = Describe("HTTP Server", func() {
 		var res result
 		Eventually(respCh).WithTimeout(5 * time.Second).Should(Receive(&res))
 		Expect(res.err).NotTo(HaveOccurred())
-		defer res.resp.Body.Close()
+		defer func() { _ = res.resp.Body.Close() }()
 		Expect(res.resp.StatusCode).To(Equal(http.StatusOK))
 
 		Eventually(errCh).WithTimeout(10 * time.Second).Should(Receive(BeNil()))
@@ -378,12 +378,12 @@ var _ = Describe("HTTP Server", func() {
 			}()
 
 			url := fmt.Sprintf("http://%s%s", addr, path)
-			req, err := http.NewRequest(method, url, nil)
+			req, err := http.NewRequest(method, url, http.NoBody)
 			Expect(err).NotTo(HaveOccurred())
 
 			resp, err := http.DefaultClient.Do(req)
 			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			Expect(resp.StatusCode).To(Equal(http.StatusBadRequest),
 				"expected 400 for: %s", description)
@@ -455,14 +455,14 @@ var _ = Describe("HTTP Server", func() {
 			if reqErr != nil {
 				return reqErr
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil
 		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 
 		// Hit the panicking route.
 		resp, err := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers", addr))
 		Expect(err).NotTo(HaveOccurred())
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
 		Expect(resp.Header.Get("Content-Type")).To(Equal("application/problem+json"))
@@ -521,7 +521,7 @@ var _ = Describe("HTTP Server", func() {
 			if reqErr != nil {
 				return reqErr
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil
 		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 
@@ -532,9 +532,7 @@ var _ = Describe("HTTP Server", func() {
 
 		// The middleware must NOT log "panic recovered" because ErrAbortHandler
 		// is re-panicked for net/http's built-in abort handler.
-		Consistently(func() string {
-			return logBuf.String()
-		}).WithTimeout(200 * time.Millisecond).WithPolling(50 * time.Millisecond).ShouldNot(ContainSubstring("panic recovered"))
+		Consistently(logBuf.String).WithTimeout(200 * time.Millisecond).WithPolling(50 * time.Millisecond).ShouldNot(ContainSubstring("panic recovered"))
 	})
 
 	// TC-I087: Headers-already-sent panic logs without writing RFC 7807
@@ -564,14 +562,14 @@ var _ = Describe("HTTP Server", func() {
 			if reqErr != nil {
 				return reqErr
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil
 		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 
 		// Hit the panicking route.
 		resp, err := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers", addr))
 		Expect(err).NotTo(HaveOccurred())
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		// The client should see the original 418 status, not a 500 replacement.
 		Expect(resp.StatusCode).To(Equal(http.StatusTeapot))
@@ -581,9 +579,7 @@ var _ = Describe("HTTP Server", func() {
 		Expect(resp.Header.Get("Content-Type")).NotTo(Equal("application/problem+json"))
 
 		// The server log must contain both indicators.
-		Eventually(func() string {
-			return logBuf.String()
-		}).WithTimeout(2 * time.Second).WithPolling(50 * time.Millisecond).Should(And(
+		Eventually(logBuf.String).WithTimeout(2 * time.Second).WithPolling(50 * time.Millisecond).Should(And(
 			ContainSubstring("panic recovered"),
 			ContainSubstring("headers already sent"),
 		))
@@ -620,15 +616,13 @@ var _ = Describe("HTTP Server", func() {
 			if reqErr != nil {
 				return reqErr
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil
 		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 
 		// Verify panic was logged. Use Eventually because the internal
 		// readiness probe may complete slightly after the external one.
-		Eventually(func() string {
-			return logBuf.String()
-		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(ContainSubstring("onReady callback panicked"))
+		Eventually(logBuf.String).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(ContainSubstring("onReady callback panicked"))
 		Expect(logBuf.String()).To(ContainSubstring("onReady boom"))
 	})
 
@@ -668,7 +662,7 @@ var _ = Describe("HTTP Server", func() {
 			if reqErr != nil {
 				return reqErr
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil
 		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 	})
@@ -702,7 +696,7 @@ var _ = Describe("HTTP Server", func() {
 			//nolint:errcheck // We expect this to fail when the server shuts down.
 			resp, err := http.Get(fmt.Sprintf("http://%s/test/block", addr))
 			if err == nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		}()
 
@@ -727,7 +721,7 @@ var _ = Describe("HTTP Server", func() {
 		handler := apiserver.NewResponseErrorHandler(logger)
 
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "/some/path", nil)
+		req := httptest.NewRequest(http.MethodGet, "/some/path", http.NoBody)
 		handler(w, req, fmt.Errorf("database connection lost"))
 
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
@@ -757,11 +751,9 @@ var _ = Describe("HTTP Server", func() {
 
 		resp, err := http.Get(fmt.Sprintf("http://%s/health", addr))
 		Expect(err).NotTo(HaveOccurred())
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
-		Eventually(func() string {
-			return logBuf.String()
-		}).WithTimeout(2 * time.Second).WithPolling(50 * time.Millisecond).Should(And(
+		Eventually(logBuf.String).WithTimeout(2 * time.Second).WithPolling(50 * time.Millisecond).Should(And(
 			ContainSubstring(`"method":"GET"`),
 			ContainSubstring(`"path":"/health"`),
 			ContainSubstring(`"status":200`),
@@ -804,7 +796,7 @@ var _ = Describe("HTTP Server", func() {
 			if reqErr != nil {
 				return reqErr
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil
 		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 
@@ -812,7 +804,7 @@ var _ = Describe("HTTP Server", func() {
 			//nolint:errcheck // response may be incomplete due to timeout
 			resp, err := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers", addr))
 			if err == nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		}()
 
@@ -860,7 +852,7 @@ var _ = Describe("HTTP Server", func() {
 
 		resp, err := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/nonexistent-id", addr))
 		Expect(err).NotTo(HaveOccurred())
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
 

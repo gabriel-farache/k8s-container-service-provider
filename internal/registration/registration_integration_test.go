@@ -96,9 +96,7 @@ var _ = Describe("Registration Integration", func() {
 
 		registrar.Start(ctx)
 
-		Eventually(func() bool {
-			return requestReceived.Load()
-		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeTrue(),
+		Eventually(requestReceived.Load).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeTrue(),
 			"expected POST to /providers but no request was received")
 	})
 
@@ -109,7 +107,7 @@ var _ = Describe("Registration Integration", func() {
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost && r.URL.Path == "/providers" {
-				defer r.Body.Close()
+				defer func() { _ = r.Body.Close() }()
 				body, err := io.ReadAll(r.Body)
 				if err == nil {
 					_ = json.Unmarshal(body, &receivedPayload)
@@ -139,9 +137,7 @@ var _ = Describe("Registration Integration", func() {
 
 		registrar.Start(ctx)
 
-		Eventually(func() bool {
-			return requestReceived.Load()
-		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeTrue(),
+		Eventually(requestReceived.Load).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeTrue(),
 			"expected registration request but none was received")
 
 		Expect(receivedPayload.Name).To(Equal("k8s-sp"))
@@ -192,9 +188,7 @@ var _ = Describe("Registration Integration", func() {
 			"Start() must return in under 1 second")
 
 		// Registration should complete in the background
-		Eventually(func() bool {
-			return requestReceived.Load()
-		}).WithTimeout(10*time.Second).WithPolling(200*time.Millisecond).Should(BeTrue(),
+		Eventually(requestReceived.Load).WithTimeout(10*time.Second).WithPolling(200*time.Millisecond).Should(BeTrue(),
 			"expected registration to complete in background")
 	})
 
@@ -240,9 +234,7 @@ var _ = Describe("Registration Integration", func() {
 
 		registrar.Start(ctx)
 
-		Eventually(func() int32 {
-			return requestCount.Load()
-		}).WithTimeout(5*time.Second).WithPolling(50*time.Millisecond).Should(BeNumerically(">=", int32(4)),
+		Eventually(requestCount.Load).WithTimeout(5*time.Second).WithPolling(50*time.Millisecond).Should(BeNumerically(">=", int32(4)),
 			"expected at least 4 registration attempts")
 
 		// Verify increasing intervals between requests
@@ -302,7 +294,7 @@ var _ = Describe("Registration Integration", func() {
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost && r.URL.Path == "/providers" {
-				defer r.Body.Close()
+				defer func() { _ = r.Body.Close() }()
 				body, err := io.ReadAll(r.Body)
 				if err == nil {
 					var p dcmv1alpha1.Provider
@@ -336,9 +328,7 @@ var _ = Describe("Registration Integration", func() {
 		ctx1, cancel1 := context.WithCancel(context.Background())
 		registrar1.Start(ctx1)
 
-		Eventually(func() int32 {
-			return requestCount.Load()
-		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeNumerically(">=", int32(1)),
+		Eventually(requestCount.Load).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeNumerically(">=", int32(1)),
 			"expected first registration request")
 		cancel1()
 
@@ -349,9 +339,7 @@ var _ = Describe("Registration Integration", func() {
 		defer cancel2()
 		registrar2.Start(ctx2)
 
-		Eventually(func() int32 {
-			return requestCount.Load()
-		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeNumerically(">=", int32(2)),
+		Eventually(requestCount.Load).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeNumerically(">=", int32(2)),
 			"expected second registration request")
 
 		mu.Lock()
@@ -368,7 +356,7 @@ var _ = Describe("Registration Integration", func() {
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost && r.URL.Path == "/providers" {
-				defer r.Body.Close()
+				defer func() { _ = r.Body.Close() }()
 				var err error
 				receivedBody, err = io.ReadAll(r.Body)
 				if err == nil {
@@ -396,9 +384,7 @@ var _ = Describe("Registration Integration", func() {
 
 		registrar.Start(ctx)
 
-		Eventually(func() bool {
-			return requestReceived.Load()
-		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeTrue(),
+		Eventually(requestReceived.Load).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeTrue(),
 			"expected registration request but none was received")
 
 		// Verify the body is valid JSON with expected structure
@@ -420,7 +406,7 @@ var _ = Describe("Registration Integration", func() {
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost && r.URL.Path == "/providers" {
-				defer r.Body.Close()
+				defer func() { _ = r.Body.Close() }()
 				var err error
 				receivedBody, err = io.ReadAll(r.Body)
 				if err == nil {
@@ -448,9 +434,7 @@ var _ = Describe("Registration Integration", func() {
 
 		registrar.Start(ctx)
 
-		Eventually(func() bool {
-			return requestReceived.Load()
-		}).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeTrue(),
+		Eventually(requestReceived.Load).WithTimeout(3*time.Second).WithPolling(100*time.Millisecond).Should(BeTrue(),
 			"expected registration request but none was received")
 
 		// Verify optional fields are absent
@@ -496,9 +480,7 @@ var _ = Describe("Registration Integration", func() {
 		registrar.Start(ctx)
 
 		// Wait for the registration attempt to complete.
-		Eventually(func() int32 {
-			return requestCount.Load()
-		}).WithTimeout(3*time.Second).WithPolling(50*time.Millisecond).Should(BeNumerically(">=", int32(1)),
+		Eventually(requestCount.Load).WithTimeout(3*time.Second).WithPolling(50*time.Millisecond).Should(BeNumerically(">=", int32(1)),
 			"expected at least one registration attempt")
 
 		// Give extra time to ensure no additional goroutines sent requests.
@@ -663,9 +645,7 @@ var _ = Describe("Registration Integration", func() {
 		registrar.Start(ctx)
 
 		// Wait for enough attempts to exceed the cap if uncapped
-		Eventually(func() int32 {
-			return requestCount.Load()
-		}).WithTimeout(8*time.Second).WithPolling(50*time.Millisecond).Should(BeNumerically(">=", int32(8)),
+		Eventually(requestCount.Load).WithTimeout(8*time.Second).WithPolling(50*time.Millisecond).Should(BeNumerically(">=", int32(8)),
 			"expected at least 8 registration attempts")
 
 		// Verify no interval exceeds the max cap (with tolerance for scheduling jitter)
