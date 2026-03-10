@@ -21,7 +21,7 @@ import (
 	oapigen "github.com/dcm-project/k8s-container-service-provider/internal/api/server"
 	"github.com/dcm-project/k8s-container-service-provider/internal/apiserver"
 	"github.com/dcm-project/k8s-container-service-provider/internal/config"
-	"github.com/dcm-project/k8s-container-service-provider/internal/handlers"
+	"github.com/dcm-project/k8s-container-service-provider/internal/handlers/container"
 )
 
 // syncBuffer is a goroutine-safe bytes.Buffer for capturing log output
@@ -98,7 +98,8 @@ var _ = Describe("HTTP Server", func() {
 			logger = slog.New(slog.NewJSONHandler(io.Discard, nil))
 		}
 
-		h := handlers.New(logger, time.Now(), "0.0.1-test")
+		ch := container.NewHandler(nil, logger, time.Now(), "0.0.1-test")
+		h := oapigen.NewStrictHandlerWithOptions(ch, nil, oapigen.StrictHTTPServerOptions{})
 		srv := apiserver.New(cfg, logger, h)
 		Expect(srv).NotTo(BeNil(), "New() must return a non-nil server")
 
@@ -581,7 +582,8 @@ var _ = Describe("HTTP Server", func() {
 		logger := slog.New(slog.NewJSONHandler(&logBuf, nil))
 
 		cfg := defaultConfig()
-		h := handlers.New(logger, time.Now(), "0.0.1-test")
+		ch := container.NewHandler(nil, logger, time.Now(), "0.0.1-test")
+		h := oapigen.NewStrictHandlerWithOptions(ch, nil, oapigen.StrictHTTPServerOptions{})
 		srv := apiserver.New(cfg, logger, h).WithOnReady(func(_ context.Context) {
 			panic("onReady boom")
 		})
@@ -621,7 +623,8 @@ var _ = Describe("HTTP Server", func() {
 	It("invokes onReady only after server is serving (TC-I085)", func() {
 		cfg := defaultConfig()
 		logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
-		h := handlers.New(logger, time.Now(), "0.0.1-test")
+		ch := container.NewHandler(nil, logger, time.Now(), "0.0.1-test")
+		h := oapigen.NewStrictHandlerWithOptions(ch, nil, oapigen.StrictHTTPServerOptions{})
 		srv := apiserver.New(cfg, logger, h).
 			WithOnReady(func(_ context.Context) {
 				// Inside onReady, verify that the health endpoint is

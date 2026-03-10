@@ -74,7 +74,7 @@ func containerFromDeployment(deploy *appsv1.Deployment, instanceID string) (v1al
 				Visibility:    v1alpha1.None,
 			}
 		}
-		c.Network = &v1alpha1.ContainerNetwork{Ports: &ports}
+		c.Network = &v1alpha1.ContainerNetwork{Ports: ports}
 	}
 
 	// Reconstruct user labels by filtering out DCM reserved labels.
@@ -197,16 +197,14 @@ func enrichWithService(container *v1alpha1.Container, svc *corev1.Service) {
 	container.Service = info
 
 	// Infer port visibility from Service state.
-	if container.Network != nil && container.Network.Ports != nil {
+	if container.Network != nil && len(container.Network.Ports) > 0 {
 		visibility := inferVisibility(svc.Spec.Type)
-		ports := *container.Network.Ports
-		for i := range ports {
-			if svcTargetPorts[ports[i].ContainerPort] {
-				ports[i].Visibility = visibility
+		for i := range container.Network.Ports {
+			if svcTargetPorts[container.Network.Ports[i].ContainerPort] {
+				container.Network.Ports[i].Visibility = visibility
 			}
 			// Ports not in the Service keep their default (none).
 		}
-		container.Network.Ports = &ports
 	}
 }
 
@@ -296,9 +294,9 @@ func buildDeployment(container v1alpha1.Container, id string, cfg K8sConfig, lab
 		}
 	}
 
-	if container.Network != nil && container.Network.Ports != nil && len(*container.Network.Ports) > 0 {
-		ports := make([]corev1.ContainerPort, len(*container.Network.Ports))
-		for i, p := range *container.Network.Ports {
+	if container.Network != nil && len(container.Network.Ports) > 0 {
+		ports := make([]corev1.ContainerPort, len(container.Network.Ports))
+		for i, p := range container.Network.Ports {
 			ports[i] = corev1.ContainerPort{
 				ContainerPort: int32(p.ContainerPort),
 			}

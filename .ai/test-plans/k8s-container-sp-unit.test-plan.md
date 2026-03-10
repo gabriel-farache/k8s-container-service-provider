@@ -6,7 +6,7 @@
 - **Related Requirements:** REQ-HTTP-050, REQ-HTTP-090, REQ-HLT-010–040, REQ-API-010–180, REQ-STR-010, REQ-STR-080, REQ-K8S-040, REQ-K8S-050, REQ-K8S-230, REQ-MON-040–090, REQ-MON-110–120, REQ-MON-150, REQ-REG-020, REQ-XC-ID-010–020, REQ-XC-ERR-010–020, REQ-XC-CFG-010
 - **Framework:** Ginkgo v2 + Gomega
 - **Created:** 2026-02-17
-- **Last Updated:** 2026-02-18 (sync update: TC-U060, REQ-XC-* coverage)
+- **Last Updated:** 2026-03-09 (added TC-U069 positive label test; tightened TC-U067 assertion to 201 + body; updated coverage matrix)
 
 Unit tests verify individual components in isolation. All external dependencies
 (ContainerRepository, K8s client, NATS, HTTP server) are replaced with mocks,
@@ -52,35 +52,7 @@ construction, debounce, indexer functions, registration payload builders) are
 
 ---
 
-## 2 · Health Handler
-
-> **Suggested Ginkgo structure:** `Describe("Health Handler")`
-
-### TC-U005: Returns 200 OK with correct body and content type
-
-- **Requirement:** REQ-HLT-010, REQ-HLT-020, REQ-HLT-030
-- **Priority:** High
-- **Type:** Unit
-- **Transitively covers:** TC-U007 (Health handler has no external dependencies — handler is constructed with only a start time and version string)
-- **Given:** The health handler is initialized with a known start time and version `"1.0.0"`
-- **When:** `GET /health` is handled via `httptest.NewRecorder`
-- **Then:**
-  - HTTP status is `200`
-  - `Content-Type` header is `application/json`
-  - Body contains `status: "healthy"`
-  - Body contains `type: "k8s-container-service-provider.dcm.io/health"`
-  - Body contains `path: "health"`
-  - Body contains `version: "1.0.0"`
-  - Body contains `uptime` as an integer `>= 0`
-
-### TC-U006: Uptime increases over time
-
-- **Requirement:** REQ-HLT-020
-- **Priority:** Medium
-- **Type:** Unit
-- **Given:** The health handler was initialized with a start time 60 seconds in the past
-- **When:** `GET /health` is handled
-- **Then:** `uptime` is `>= 60`
+## 2 · (Reserved — section removed, TCs moved to Section 3)
 
 ---
 
@@ -89,6 +61,31 @@ construction, debounce, indexer functions, registration payload builders) are
 > **Suggested Ginkgo structure:** `Describe("Container API Handlers")` with
 > nested `Describe` per operation and `Context` per scenario. All tests use a
 > mocked `ContainerRepository`.
+
+### TC-U005: Returns 200 with correct response fields
+
+- **Requirement:** REQ-HLT-010, REQ-HLT-020
+- **Priority:** High
+- **Type:** Unit
+- **Transitively covers:** TC-U007 (GetHealth uses only `startTime` and `version` — never touches the store or K8s API; REQ-HLT-040 satisfied)
+- **Given:** A `Handler` is initialized with a known start time, version `"2.3.4"`, and a `nil` repository
+- **When:** `GetHealth` is called on the `StrictServerInterface`
+- **Then:**
+  - Response is `GetHealth200JSONResponse`
+  - `status` is `"healthy"`
+  - `type` is `"k8s-container-service-provider.dcm.io/health"`
+  - `path` is `"health"`
+  - `version` is `"2.3.4"`
+  - `uptime` is an integer `>= 0`
+
+### TC-U006: Uptime increases over time
+
+- **Requirement:** REQ-HLT-020
+- **Priority:** Medium
+- **Type:** Unit
+- **Given:** A `Handler` was initialized with a start time 60 seconds in the past and a `nil` repository
+- **When:** `GetHealth` is called on the `StrictServerInterface`
+- **Then:** `uptime` is `>= 60`
 
 ### TC-U009: CreateContainer returns 201 with populated read-only fields
 
@@ -403,15 +400,15 @@ dedicated test class or `Describe` block.
 
 ### Structural Contracts
 
-#### TC-U007: Health handler has no external dependencies
+#### TC-U007: GetHealth has no external dependencies at runtime
 
 - **Requirement:** REQ-HLT-040
 - **Priority:** Medium
 - **Type:** Unit (structural)
-- **Given:** The health handler struct
-- **When:** Its fields and constructor are inspected
-- **Then:** It accepts no K8s client, repository, or database dependency — only a start time, version string, and standard-library logger
-- **Referenced by:** TC-U005 (health handler constructed without external deps)
+- **Given:** The `Handler` struct (which includes a `store` field for container CRUD)
+- **When:** `GetHealth` is inspected
+- **Then:** It uses only `startTime` and `version` — it never accesses the store, K8s client, or any external dependency. The handler is constructed with a `nil` repository in health tests, confirming no store interaction.
+- **Referenced by:** TC-U005 (handler constructed with nil repo; GetHealth succeeds)
 
 #### TC-U008: Handler implements StrictServerInterface
 
@@ -755,24 +752,45 @@ dedicated test class or `Describe` block.
 - **Then:** `display_name` is absent from the payload (nil pointer)
 - **Referenced by:** TC-I068 (registration without optional fields integration test)
 
-#### TC-U066: Composite handler delegates GetHealth to health sub-handler
+#### TC-U066: ~~Composite handler delegates GetHealth to health sub-handler~~ (RETIRED)
 
-- **Requirement:** REQ-HLT-010
-- **Priority:** Medium
+- **Status:** RETIRED
+- **Reason:** Composite handler delegation layer removed; health behavior covered directly by TC-U005 in the container handler package.
+
+#### TC-U067: Valid request passes OpenAPI middleware
+
+- **Requirement:** REQ-API-090, REQ-HTTP-090
+- **Priority:** High
+- **Type:** Unit (validation sub-case)
+- **Given:** A valid container request body with all required fields
+- **When:** POST `/api/v1alpha1/containers` is sent through the OpenAPI validation middleware
+- **Then:** The response is 201 with a valid container body (service_type, metadata.name present)
+- **Referenced by:** TC-U014 (CreateContainer validates request body)
+
+#### TC-U069: CreateContainer accepts and propagates non-reserved user labels
+
+- **Requirement:** REQ-API-090 (extended — see SC-004)
+- **Priority:** High
 - **Type:** Unit
-- **Given:** A composite `Handler` is created with a logger, start time, and version
-- **When:** `GetHealth` is called on the composite handler
-- **Then:** The response is HTTP 200 with `Content-Type: application/json`, valid JSON body containing `status: "healthy"` and the configured version
-- **Referenced by:** TC-U005 (health handler unit tests)
+- **Given:** A valid request body with `metadata.labels: {"team": "platform", "env": "dev"}` (non-reserved keys)
+- **When:** `POST /api/v1alpha1/containers` is called (mock repository returns success)
+- **Then:** HTTP status is `201` AND the labels passed to the store match the input AND the response container's labels match the input
+- **Referenced by:** TC-U049 (positive complement to reserved-label rejection)
 
-#### TC-U065: Unimplemented endpoints return 501
+#### TC-U068: containerIDPattern matches OpenAPI spec pattern
 
-- **Requirement:** REQ-API-010
-- **Priority:** Medium
-- **Type:** Unit
-- **Given:** A composite `Handler` with only the health sub-handler initialised
-- **When:** An unimplemented endpoint (e.g., `ListContainers`) is called
-- **Then:** The response is HTTP 501 Not Implemented (via the embedded `oapigen.Unimplemented` stub)
+- **Requirement:** REQ-API-050
+- **Priority:** High
+- **Type:** Unit (contract test)
+- **Given:** The embedded OpenAPI spec returned by `v1alpha1.GetSwagger()`
+- **When:** The `id` query parameter pattern from `POST /api/v1alpha1/containers` is extracted
+- **Then:** It matches `containerIDPattern.String()` exactly
+- **Referenced by:** TC-U012 (CreateContainer rejects invalid IDs), TC-U047 (valid boundary IDs)
+
+#### TC-U065: ~~Unimplemented endpoints return 501~~ (RETIRED)
+
+- **Status:** RETIRED
+- **Reason:** Tests generated code behavior (`oapigen.Unimplemented`), not project logic; composite handler removed. REQ-API-010 remains covered by TC-U008 (via TC-U009).
 
 ---
 
@@ -781,20 +799,20 @@ dedicated test class or `Describe` block.
 | Requirement   | Test Cases                        | Status  |
 |---------------|-----------------------------------|---------|
 | REQ-HTTP-050  | TC-U002, TC-U004                  | Covered |
-| REQ-HTTP-090  | TC-U057 (via TC-I008), TC-U058 (via TC-I008) | Covered |
-| REQ-HLT-010   | TC-U005, TC-U064                  | Covered |
+| REQ-HTTP-090  | TC-U057 (via TC-I008), TC-U058 (via TC-I008), TC-U067 (via TC-U014) | Covered |
+| REQ-HLT-010   | TC-U005                           | Covered |
 | REQ-HLT-020   | TC-U005, TC-U006                  | Covered |
-| REQ-HLT-030   | TC-U005                           | Covered |
+| REQ-HLT-030   | TC-U005 (transitively via generated `VisitGetHealthResponse` + TC-I001/I002) | Covered |
 | REQ-HLT-040   | TC-U007 (via TC-U005)             | Covered |
-| REQ-API-010   | TC-U008 (via TC-U009), TC-U065    | Covered |
+| REQ-API-010   | TC-U008 (via TC-U009)             | Covered |
 | REQ-API-020   | TC-U009                           | Covered |
 | REQ-API-030   | TC-U010                           | Covered |
 | REQ-API-040   | TC-U011                           | Covered |
-| REQ-API-050   | TC-U012, TC-U047                  | Covered |
+| REQ-API-050   | TC-U012, TC-U047, TC-U068         | Covered |
 | REQ-API-060   | TC-U009                           | Covered |
 | REQ-API-070   | TC-U009                           | Covered |
 | REQ-API-080   | TC-U013, TC-U046                  | Covered |
-| REQ-API-090   | TC-U014, TC-U048, TC-U049, TC-U052–TC-U056, TC-U059 | Covered |
+| REQ-API-090   | TC-U014, TC-U048, TC-U049, TC-U052–TC-U056, TC-U059, TC-U067 (via TC-U014), TC-U069 | Covered |
 | REQ-API-100   | TC-U015, TC-U050                  | Covered |
 | REQ-API-110   | TC-U016                           | Covered |
 | REQ-API-120   | TC-U017                           | Covered |
@@ -826,9 +844,9 @@ dedicated test class or `Describe` block.
 | REQ-REG-070   | TC-U061                           | Covered |
 | REQ-XC-CFG-010| TC-U002, TC-U004, TC-U063         | Covered |
 
-**Total:** 63 test case IDs — 33 in behavioural test classes, 30 in the utility
-index (tested transitively through higher-level behavioural and integration
-tests).
+**Total:** 64 test case IDs (2 retired: TC-U065, TC-U066) — 34 in behavioural
+test classes, 30 in the utility index (tested transitively through higher-level
+behavioural and integration tests).
 
 > Requirements not listed above (REQ-HTTP-010–040, REQ-HTTP-080,
 > REQ-STR-020–070, REQ-K8S-010–270 excluding 040/050/230, REQ-MON-010–030,
@@ -845,4 +863,4 @@ tests).
 - **Compile-time checks:** TC-U008 and TC-U024 are implemented as `var _ StrictServerInterface = (*Handler)(nil)` in their respective test files. They do not need their own `It` block.
 - **Time-sensitive tests:** TC-U006 depends on time. Use a clock interface or inject a time function to avoid flaky tests.
 - **REQ-HLT-040 (lightweight):** TC-U007 verifies the handler's structural simplicity. Runtime performance is a design constraint validated during code review, not a functional test.
-- **Utility transitive coverage:** Utility TCs (TC-U007/U008/U024–U030/U036–U045/U052–U059) have no dedicated `Describe` blocks. Their coverage is achieved through the behavioural tests that reference them. The integration test plan documents the corresponding integration-level transitive references.
+- **Utility transitive coverage:** Utility TCs (TC-U007/U008/U024–U030/U036–U045/U052–U059/U067–U068) have no dedicated `Describe` blocks. Their coverage is achieved through the behavioural tests that reference them. The integration test plan documents the corresponding integration-level transitive references.

@@ -150,7 +150,7 @@ type ContainerNetwork struct {
 	Ip *string `json:"ip,omitempty"`
 
 	// Ports Container ports to expose
-	Ports                *[]ContainerPort       `json:"ports,omitempty"`
+	Ports                []ContainerPort        `json:"ports"`
 	AdditionalProperties map[string]interface{} `json:"-"`
 }
 
@@ -291,7 +291,7 @@ type CreateContainerParams struct {
 	//
 	// Requirements (per AEP-122):
 	// - 1-63 characters long
-	// - Start with lowercase letter
+	// - Start with a lowercase letter or digit
 	// - Contain only lowercase letters, numbers, and hyphens
 	// - End with letter or number
 	Id *string `form:"id,omitempty" json:"id,omitempty"`

@@ -155,7 +155,7 @@ var _ = Describe("K8s Store", func() {
 				{ContainerPort: 8080, Visibility: v1alpha1.Internal},
 				{ContainerPort: 9090, Visibility: v1alpha1.None},
 			}
-			c.Network = &v1alpha1.ContainerNetwork{Ports: &ports}
+			c.Network = &v1alpha1.ContainerNetwork{Ports: ports}
 
 			_, err := s.Create(context.Background(), c, "test-id-091")
 			Expect(err).NotTo(HaveOccurred())
@@ -176,7 +176,7 @@ var _ = Describe("K8s Store", func() {
 				{ContainerPort: 8080, Visibility: v1alpha1.Internal},
 				{ContainerPort: 9090, Visibility: v1alpha1.External},
 			}
-			c.Network = &v1alpha1.ContainerNetwork{Ports: &ports}
+			c.Network = &v1alpha1.ContainerNetwork{Ports: ports}
 
 			_, err := s.Create(context.Background(), c, "test-id-092")
 			Expect(err).NotTo(HaveOccurred())
@@ -203,7 +203,7 @@ var _ = Describe("K8s Store", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(got.Network).NotTo(BeNil())
 			Expect(got.Network.Ports).NotTo(BeNil())
-			ports := *got.Network.Ports
+			ports := got.Network.Ports
 			Expect(ports).To(HaveLen(1))
 			Expect(ports[0].Visibility).To(Equal(v1alpha1.Internal))
 		})
@@ -226,7 +226,7 @@ var _ = Describe("K8s Store", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(got.Network).NotTo(BeNil())
 			Expect(got.Network.Ports).NotTo(BeNil())
-			ports := *got.Network.Ports
+			ports := got.Network.Ports
 			Expect(ports).To(HaveLen(1))
 			Expect(ports[0].Visibility).To(Equal(v1alpha1.External))
 		})
@@ -247,7 +247,7 @@ var _ = Describe("K8s Store", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(got.Network).NotTo(BeNil())
 			Expect(got.Network.Ports).NotTo(BeNil())
-			ports := *got.Network.Ports
+			ports := got.Network.Ports
 			Expect(ports).To(HaveLen(1))
 			Expect(ports[0].Visibility).To(Equal(v1alpha1.None))
 		})

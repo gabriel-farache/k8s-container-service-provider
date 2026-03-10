@@ -109,13 +109,13 @@ paths:
 
             Requirements (per AEP-122):
             - 1-63 characters long
-            - Start with lowercase letter
+            - Start with a lowercase letter or digit
             - Contain only lowercase letters, numbers, and hyphens
             - End with letter or number
           required: false
           schema:
             type: string
-            pattern: '^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'
+            pattern: '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$'
             minLength: 1
             maxLength: 63
           example: my-nginx-container
@@ -435,6 +435,8 @@ components:
       type: object
       description: Network configuration
       additionalProperties: true
+      required:
+        - ports
       properties:
         ip:
           type: string

@@ -1,0 +1,104 @@
+package container
+
+import (
+	"context"
+	"log/slog"
+	"time"
+
+	oapigen "github.com/dcm-project/k8s-container-service-provider/internal/api/server"
+	"github.com/dcm-project/k8s-container-service-provider/internal/store"
+	"github.com/dcm-project/k8s-container-service-provider/internal/util"
+	"github.com/google/uuid"
+)
+
+// Handler implements oapigen.StrictServerInterface for container CRUD
+// operations and the health endpoint. It delegates persistence to a
+// store.ContainerRepository and maps store errors to typed OpenAPI responses.
+type Handler struct {
+	store     store.ContainerRepository
+	logger    *slog.Logger
+	startTime time.Time
+	version   string
+}
+
+// NewHandler creates a Handler backed by the given repository.
+func NewHandler(repo store.ContainerRepository, logger *slog.Logger, startTime time.Time, version string) *Handler {
+	return &Handler{
+		store:     repo,
+		logger:    logger,
+		startTime: startTime,
+		version:   version,
+	}
+}
+
+func (h *Handler) CreateContainer(ctx context.Context, req oapigen.CreateContainerRequestObject) (oapigen.CreateContainerResponseObject, error) {
+	var id string
+	if req.Params.Id != nil {
+		id = *req.Params.Id
+	} else {
+		id = uuid.New().String()
+	}
+
+	if err := validateResources(req.Body.Resources); err != nil {
+		return newCreateError400(err.Error()), nil
+	}
+
+	if err := validateUserLabels(req.Body.Metadata.Labels); err != nil {
+		return newCreateError400(err.Error()), nil
+	}
+
+	result, err := h.store.Create(ctx, *req.Body, id)
+	if err != nil {
+		return h.mapCreateError(err), nil
+	}
+	return oapigen.CreateContainer201JSONResponse(*result), nil
+}
+
+func (h *Handler) GetContainer(ctx context.Context, req oapigen.GetContainerRequestObject) (oapigen.GetContainerResponseObject, error) {
+	result, err := h.store.Get(ctx, req.ContainerId)
+	if err != nil {
+		return h.mapGetError(err), nil
+	}
+	return oapigen.GetContainer200JSONResponse(*result), nil
+}
+
+func (h *Handler) DeleteContainer(ctx context.Context, req oapigen.DeleteContainerRequestObject) (oapigen.DeleteContainerResponseObject, error) {
+	if err := h.store.Delete(ctx, req.ContainerId); err != nil {
+		return h.mapDeleteError(err), nil
+	}
+	return oapigen.DeleteContainer204Response{}, nil
+}
+
+func (h *Handler) ListContainers(ctx context.Context, req oapigen.ListContainersRequestObject) (oapigen.ListContainersResponseObject, error) {
+	// maxPageSize validation chain:
+	//   - OpenAPI middleware enforces max_page_size ∈ [1,1000] (invalid → 400).
+	//   - When omitted (nil), 0 is passed to the store which defaults to 50.
+	// No handler-layer clamping is needed.
+	var maxPageSize int32
+	if req.Params.MaxPageSize != nil {
+		maxPageSize = *req.Params.MaxPageSize
+	}
+
+	var pageToken string
+	if req.Params.PageToken != nil {
+		pageToken = *req.Params.PageToken
+	}
+
+	result, err := h.store.List(ctx, maxPageSize, pageToken)
+	if err != nil {
+		return h.mapListError(err), nil
+	}
+	return oapigen.ListContainers200JSONResponse(*result), nil
+}
+
+// GetHealth returns the service health status including uptime and version.
+func (h *Handler) GetHealth(_ context.Context, _ oapigen.GetHealthRequestObject) (oapigen.GetHealthResponseObject, error) {
+	uptime := max(0, int(time.Since(h.startTime).Seconds()))
+	return oapigen.GetHealth200JSONResponse{
+		Status:  "healthy",
+		Type:    util.Ptr("k8s-container-service-provider.dcm.io/health"),
+		Path:    util.Ptr("health"),
+		Uptime:  &uptime,
+		Version: util.Ptr(h.version),
+	}, nil
+}

@@ -30,11 +30,20 @@ type DCMConfig struct {
 	RegistrationURL string `env:"REGISTRATION_URL,notEmpty"`
 }
 
+// KubernetesConfig holds Kubernetes-specific settings.
+type KubernetesConfig struct {
+	Namespace          string `env:"NAMESPACE"           envDefault:"default"`
+	Kubeconfig         string `env:"KUBECONFIG"`
+	CreateService      bool   `env:"CREATE_SERVICE"      envDefault:"false"`
+	DefaultServiceType string `env:"DEFAULT_SVC_TYPE"     envDefault:"ClusterIP"`
+}
+
 // Config is the root configuration for the service provider.
 type Config struct {
-	Server   ServerConfig   `envPrefix:"SP_SERVER_"`
-	Provider ProviderConfig `envPrefix:"SP_PROVIDER_"`
-	DCM      DCMConfig      `envPrefix:"SP_DCM_"`
+	Server     ServerConfig     `envPrefix:"SP_SERVER_"`
+	Provider   ProviderConfig   `envPrefix:"SP_PROVIDER_"`
+	DCM        DCMConfig        `envPrefix:"SP_DCM_"`
+	Kubernetes KubernetesConfig `envPrefix:"SP_K8S_"`
 }
 
 // Load reads configuration from environment variables.

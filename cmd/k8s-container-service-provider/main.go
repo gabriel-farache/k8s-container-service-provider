@@ -10,9 +10,11 @@ import (
 	"syscall"
 	"time"
 
+	oapigen "github.com/dcm-project/k8s-container-service-provider/internal/api/server"
 	"github.com/dcm-project/k8s-container-service-provider/internal/apiserver"
 	"github.com/dcm-project/k8s-container-service-provider/internal/config"
-	"github.com/dcm-project/k8s-container-service-provider/internal/handlers"
+	containerhandler "github.com/dcm-project/k8s-container-service-provider/internal/handlers/container"
+	k8s "github.com/dcm-project/k8s-container-service-provider/internal/kubernetes"
 	"github.com/dcm-project/k8s-container-service-provider/internal/registration"
 )
 
@@ -48,8 +50,20 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("failed to create registrar: %w", err)
 	}
 
-	h := handlers.New(logger, time.Now(), version)
-	srv := apiserver.New(cfg, logger, h).WithOnReady(registrar.Start)
+	k8sClient, err := k8s.NewClient(cfg.Kubernetes.Kubeconfig)
+	if err != nil {
+		return fmt.Errorf("creating kubernetes client: %w", err)
+	}
+	k8sCfg := k8s.K8sConfig{
+		Namespace:          cfg.Kubernetes.Namespace,
+		DefaultServiceType: cfg.Kubernetes.DefaultServiceType,
+	}
+	store := k8s.NewK8sContainerStore(k8sClient, k8sCfg, logger)
+
+	containerHandler := containerhandler.NewHandler(store, logger, time.Now(), version)
+	strictAdapter := oapigen.NewStrictHandlerWithOptions(containerHandler, nil, oapigen.StrictHTTPServerOptions{})
+
+	srv := apiserver.New(cfg, logger, strictAdapter).WithOnReady(registrar.Start)
 
 	return srv.Run(ctx, ln)
 }

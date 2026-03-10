@@ -1,4 +1,4 @@
-package health_test
+package container_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestHealth(t *testing.T) {
+func TestHandler(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Health Suite")
+	RunSpecs(t, "Container Suite")
 }

@@ -71,7 +71,7 @@ func containerWithPorts(name string, ports ...int) v1alpha1.Container {
 		}
 	}
 	c.Network = &v1alpha1.ContainerNetwork{
-		Ports: &containerPorts,
+		Ports: containerPorts,
 	}
 	return c
 }
@@ -87,7 +87,7 @@ func containerWithVisiblePorts(name string, visibility v1alpha1.ContainerPortVis
 		}
 	}
 	c.Network = &v1alpha1.ContainerNetwork{
-		Ports: &containerPorts,
+		Ports: containerPorts,
 	}
 	return c
 }
