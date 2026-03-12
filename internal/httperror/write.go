@@ -1,4 +1,4 @@
-package rfc7807
+package httperror
 
 import (
 	"encoding/json"

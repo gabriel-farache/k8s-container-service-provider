@@ -14,7 +14,7 @@ import (
 	v1alpha1 "github.com/dcm-project/k8s-container-service-provider/api/v1alpha1"
 	oapigen "github.com/dcm-project/k8s-container-service-provider/internal/api/server"
 	"github.com/dcm-project/k8s-container-service-provider/internal/config"
-	"github.com/dcm-project/k8s-container-service-provider/internal/rfc7807"
+	"github.com/dcm-project/k8s-container-service-provider/internal/httperror"
 	"github.com/dcm-project/k8s-container-service-provider/internal/util"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -38,7 +38,7 @@ type Server struct {
 func newBadRequestHandler(logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		detail := scrubValidationError(err)
-		rfc7807.WriteResponse(w, logger, http.StatusBadRequest, v1alpha1.INVALIDARGUMENT, "Bad Request", detail, requestInstance(r))
+		httperror.WriteResponse(w, logger, http.StatusBadRequest, v1alpha1.INVALIDARGUMENT, "Bad Request", detail, requestInstance(r))
 	}
 }
 
@@ -54,7 +54,7 @@ func NewRequestErrorHandler(logger *slog.Logger) func(http.ResponseWriter, *http
 func NewResponseErrorHandler(logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		logger.Error("strict handler response error", "error", err)
-		rfc7807.WriteResponse(w, logger, http.StatusInternalServerError, v1alpha1.INTERNAL, rfc7807.InternalTitle, rfc7807.InternalDetail, requestInstance(r))
+		httperror.WriteResponse(w, logger, http.StatusInternalServerError, v1alpha1.INTERNAL, httperror.InternalTitle, httperror.InternalDetail, requestInstance(r))
 	}
 }
 
@@ -195,14 +195,14 @@ func (w *statusRecordingResponseWriter) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }
 
-// rfc7807RecoveryMiddleware catches panics and returns an RFC 7807
+// recoveryMiddleware catches panics and returns an RFC 7807
 // application/problem+json response instead of a plain-text stack trace.
 //
 // Special cases:
 //   - http.ErrAbortHandler is re-panicked so net/http aborts the connection.
 //   - If the handler already called WriteHeader/Write, the middleware logs the
 //     panic but does not attempt to write a response (headers already on the wire).
-func rfc7807RecoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
+func recoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			sw := &statusRecordingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
@@ -222,7 +222,7 @@ func rfc7807RecoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Hand
 						return
 					}
 
-					rfc7807.WriteResponse(w, logger, http.StatusInternalServerError, v1alpha1.INTERNAL, rfc7807.InternalTitle, rfc7807.InternalDetail, requestInstance(r))
+					httperror.WriteResponse(w, logger, http.StatusInternalServerError, v1alpha1.INTERNAL, httperror.InternalTitle, httperror.InternalDetail, requestInstance(r))
 				}
 			}()
 			next.ServeHTTP(sw, r)
@@ -303,7 +303,7 @@ func New(cfg *config.Config, logger *slog.Logger, handler oapigen.ServerInterfac
 	badReq := newBadRequestHandler(logger)
 
 	r := chi.NewRouter()
-	r.Use(rfc7807RecoveryMiddleware(logger))
+	r.Use(recoveryMiddleware(logger))
 	r.Use(requestLoggingMiddleware(logger))
 	r.Use(requestTimeoutMiddleware(cfg.Server.RequestTimeout))
 
@@ -325,7 +325,7 @@ func New(cfg *config.Config, logger *slog.Logger, handler oapigen.ServerInterfac
 	// generated router sees them. Chi treats /containers/ as a distinct
 	// path from /containers/{container_id}, so without this route it would 404.
 	emptyIDHandler := func(w http.ResponseWriter, r *http.Request) {
-		rfc7807.WriteResponse(w, logger, http.StatusBadRequest, v1alpha1.INVALIDARGUMENT, "Bad Request", "container_id is required and cannot be empty", requestInstance(r))
+		httperror.WriteResponse(w, logger, http.StatusBadRequest, v1alpha1.INVALIDARGUMENT, "Bad Request", "container_id is required and cannot be empty", requestInstance(r))
 	}
 	postPath, pathErr := v1alpha1.PostPath()
 	if pathErr != nil {

@@ -1,4 +1,4 @@
-package rfc7807_test
+package httperror_test
 
 import (
 	"encoding/json"
@@ -12,13 +12,13 @@ import (
 	. "github.com/onsi/gomega"
 
 	v1alpha1 "github.com/dcm-project/k8s-container-service-provider/api/v1alpha1"
-	"github.com/dcm-project/k8s-container-service-provider/internal/rfc7807"
+	"github.com/dcm-project/k8s-container-service-provider/internal/httperror"
 	"github.com/dcm-project/k8s-container-service-provider/internal/util"
 )
 
-func TestRFC7807(t *testing.T) {
+func TestHTTPError(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "RFC7807 Suite")
+	RunSpecs(t, "HTTPError Suite")
 }
 
 var _ = Describe("WriteResponse", func() {
@@ -27,7 +27,7 @@ var _ = Describe("WriteResponse", func() {
 		w := httptest.NewRecorder()
 		instance := "/some/path"
 
-		rfc7807.WriteResponse(w, logger, http.StatusBadRequest, v1alpha1.INVALIDARGUMENT, "Bad Request", "missing required field", &instance)
+		httperror.WriteResponse(w, logger, http.StatusBadRequest, v1alpha1.INVALIDARGUMENT, "Bad Request", "missing required field", &instance)
 
 		Expect(w.Code).To(Equal(http.StatusBadRequest))
 		Expect(w.Header().Get("Content-Type")).To(Equal("application/problem+json"))
@@ -45,7 +45,7 @@ var _ = Describe("WriteResponse", func() {
 		logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 		w := httptest.NewRecorder()
 
-		rfc7807.WriteResponse(w, logger, http.StatusInternalServerError, v1alpha1.INTERNAL, rfc7807.InternalTitle, rfc7807.InternalDetail, util.Ptr("/api/v1alpha1/containers"))
+		httperror.WriteResponse(w, logger, http.StatusInternalServerError, v1alpha1.INTERNAL, httperror.InternalTitle, httperror.InternalDetail, util.Ptr("/api/v1alpha1/containers"))
 
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		Expect(w.Header().Get("Content-Type")).To(Equal("application/problem+json"))
@@ -62,7 +62,7 @@ var _ = Describe("WriteResponse", func() {
 		logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 		w := httptest.NewRecorder()
 
-		rfc7807.WriteResponse(w, logger, http.StatusBadRequest, v1alpha1.INVALIDARGUMENT, "Bad Request", "some detail", nil)
+		httperror.WriteResponse(w, logger, http.StatusBadRequest, v1alpha1.INVALIDARGUMENT, "Bad Request", "some detail", nil)
 
 		var body map[string]any
 		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
