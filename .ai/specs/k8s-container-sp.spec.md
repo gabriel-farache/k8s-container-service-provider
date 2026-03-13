@@ -533,6 +533,9 @@ topic 5).
 | REQ-K8S-250 | List operations MUST support pagination over Deployment resources using K8s continue tokens | MUST | |
 | REQ-K8S-260 | All resources MUST be created in the configured namespace | MUST | DD-030 |
 | REQ-K8S-270 | Created Services MUST carry the same DCM labels as the Deployment | MUST | |
+| REQ-K8S-280 | During a rolling update (UpdatedReplicas < Replicas), the store MUST select the Running Pod for status; if none Running, the newest Pod MUST be selected | MUST | |
+| REQ-K8S-290 | If 2 Pods exist without a rolling update in progress, or 3+ Pods exist regardless, the store MUST return a ConflictError | MUST | |
+| REQ-K8S-300 | Get and Delete MUST return a ConflictError when multiple Deployments match the same instance ID label | MUST | |
 
 **Status mapping (REQ-K8S-230):**
 
@@ -852,6 +855,41 @@ topic 5).
   - `managed-by`: `dcm`
   - `dcm-instance-id`: `abc-123`
   - `dcm-service-type`: `container`
+
+##### AC-K8S-280: Rolling update pod selection
+
+- **Validates:** REQ-K8S-280
+- **Given** a Deployment is mid-rollout (UpdatedReplicas < Replicas) with 2 Pods
+- **When** `Get` is called
+- **Then** the Running Pod MUST be selected for status; if none Running, the newest Pod MUST be selected
+
+##### AC-K8S-290a: ConflictError for 2 pods without rollout
+
+- **Validates:** REQ-K8S-290
+- **Given** a Deployment has stable status (no rollout) but 2 Pods exist
+- **When** `Get` is called
+- **Then** a ConflictError MUST be returned
+
+##### AC-K8S-290b: ConflictError for 3+ pods
+
+- **Validates:** REQ-K8S-290
+- **Given** 3 or more Pods exist for an instance, regardless of rollout state
+- **When** `Get` is called
+- **Then** a ConflictError MUST be returned
+
+##### AC-K8S-300a: Get conflict for multiple Deployments
+
+- **Validates:** REQ-K8S-300
+- **Given** two Deployments share the same `dcm-instance-id` label
+- **When** `Get` is called with that instance ID
+- **Then** a ConflictError MUST be returned
+
+##### AC-K8S-300b: Delete conflict for multiple Deployments
+
+- **Validates:** REQ-K8S-300
+- **Given** two Deployments share the same `dcm-instance-id` label
+- **When** `Delete` is called with that instance ID
+- **Then** a ConflictError MUST be returned
 
 #### Dependencies
 

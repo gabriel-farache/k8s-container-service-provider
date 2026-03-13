@@ -58,13 +58,13 @@ func NewResponseErrorHandler(logger *slog.Logger) func(http.ResponseWriter, *htt
 	}
 }
 
-// requestInstance returns a pointer to the request URI for use as the
-// RFC 7807 instance field. Returns nil if the request is nil.
+// requestInstance returns a pointer to the request URI (path + query string)
+// for use as the RFC 7807 instance field. Returns nil if the request is nil.
 func requestInstance(r *http.Request) *string {
 	if r == nil {
 		return nil
 	}
-	return util.Ptr(r.URL.Path)
+	return util.Ptr(r.URL.RequestURI())
 }
 
 // readinessProbeTimeout is how long to wait for the server to confirm it is

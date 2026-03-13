@@ -6,7 +6,7 @@
 - **Related Requirements:** REQ-HTTP-010–040, REQ-HTTP-060–070, REQ-HTTP-080–090, REQ-HTTP-110, REQ-API-070, REQ-API-180, REQ-STR-020–070, REQ-STR-080, REQ-K8S-010–270, REQ-MON-010–030, REQ-MON-040–070, REQ-MON-100, REQ-MON-110, REQ-MON-130–150, REQ-MON-160, REQ-MON-180–190, REQ-REG-010–070, REQ-XC-ID-010–020, REQ-XC-LBL-010, REQ-XC-ERR-010–020, REQ-XC-LOG-010–020
 - **Framework:** Ginkgo v2 + Gomega
 - **Created:** 2026-02-17
-- **Last Updated:** 2026-03-10 (cross-SP alignment: added TC-I096–TC-I101; mapped existing TCs to new REQs; updated coverage matrix)
+- **Last Updated:** 2026-03-10 (TC-ID collision fix: renumbered TC-I102–TC-I110; added REQ-K8S-280/290/300; updated coverage matrix)
 
 Integration tests verify components working together with realistic (but
 controlled) dependencies. The K8s store tests use `client-go/kubernetes/fake`.
@@ -184,6 +184,33 @@ for full descriptions.
 - **Given:** The server is running
 - **When:** `GET /api/v1alpha1/containers/health` is called
 - **Then:** The response MUST be HTTP 200 with a valid Health JSON body containing `status`, `type`, `path`, `version`, and `uptime` fields
+
+### TC-I104: Panic recovery returns RFC 7807 JSON
+
+- **Requirement:** REQ-HTTP-070
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A handler that panics with a string value during request processing
+- **When:** The request is processed
+- **Then:** The response MUST be HTTP 500 with `Content-Type: application/problem+json` AND body contains `type=INTERNAL` AND no panic details leak to the client
+
+### TC-I105: http.ErrAbortHandler is re-panicked
+
+- **Requirement:** REQ-HTTP-070
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A handler that panics with `http.ErrAbortHandler`
+- **When:** The request is processed
+- **Then:** The connection MUST be aborted (transport-level error, not a 500 response) AND "panic recovered" MUST NOT appear in the log
+
+### TC-I106: Headers-already-sent panic logs without writing response
+
+- **Requirement:** REQ-HTTP-070
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A handler that writes a status header (418) and then panics
+- **When:** The request is processed
+- **Then:** The client sees the original 418 status AND Content-Type is NOT `application/problem+json` AND the log contains "panic recovered" and "headers already sent"
 
 ---
 
@@ -470,6 +497,24 @@ for full descriptions.
 - **When:** `Create` is called
 - **Then:** Deployment is in `"production"` namespace AND Service is in `"production"` namespace
 
+### TC-I102: Get returns ConflictError when multiple Deployments share instance ID
+
+- **Requirement:** REQ-K8S-300
+- **Priority:** High
+- **Type:** Integration
+- **Given:** Two Deployments exist with the same `dcm-instance-id` label but different names
+- **When:** `Get` is called with that instance ID
+- **Then:** A `ConflictError` is returned
+
+### TC-I103: Delete returns ConflictError when multiple Deployments share instance ID
+
+- **Requirement:** REQ-K8S-300
+- **Priority:** High
+- **Type:** Integration
+- **Given:** Two Deployments exist with the same `dcm-instance-id` label but different names
+- **When:** `Delete` is called with that instance ID
+- **Then:** A `ConflictError` is returned AND neither Deployment is deleted
+
 ### TC-I081: Unexpected K8s API error produces internal store error
 
 - **Requirement:** REQ-API-180, REQ-STR-080
@@ -553,6 +598,44 @@ for full descriptions.
 - **Given:** A container `"abc-123"` has a Deployment and running Pod but no Service
 - **When:** `Get` is called
 - **Then:** The response contains `status`, `network.ip` from the Pod AND `service` fields are absent or empty (no `clusterIP`, `type`, `ports`)
+
+### 5.1 · Rolling Update Pod Handling
+
+### TC-I107: Returns Running pod when 2 pods exist during rollout
+
+- **Requirement:** REQ-K8S-280
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A Deployment is mid-rollout (UpdatedReplicas < Replicas) with a Running pod and a Pending pod
+- **When:** `Get` is called
+- **Then:** The response status is `RUNNING` with the Running pod's IP
+
+### TC-I108: Returns newest pod when 2 pods during rollout (both Pending)
+
+- **Requirement:** REQ-K8S-280
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A Deployment is mid-rollout with 2 Pending pods (different creation timestamps)
+- **When:** `Get` is called
+- **Then:** The response status is `PENDING` (newest pod selected)
+
+### TC-I109: ConflictError when 2 pods but no rollout in progress
+
+- **Requirement:** REQ-K8S-290
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A Deployment has stable status (UpdatedReplicas == Replicas) but 2 pods exist
+- **When:** `Get` is called
+- **Then:** A `ConflictError` is returned
+
+### TC-I110: ConflictError when 3+ pods regardless of rollout state
+
+- **Requirement:** REQ-K8S-290
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A Deployment is mid-rollout but 3 pods exist
+- **When:** `Get` is called
+- **Then:** A `ConflictError` is returned
 
 ---
 
@@ -1049,7 +1132,7 @@ for full descriptions.
 | REQ-HTTP-030   | TC-I004, TC-I079                    | Covered |
 | REQ-HTTP-040   | TC-I005                             | Covered |
 | REQ-HTTP-060   | TC-I096, TC-I097                    | Covered |
-| REQ-HTTP-070   | TC-I080, TC-I086, TC-I087, TC-I102  | Covered |
+| REQ-HTTP-070   | TC-I102, TC-I104, TC-I105, TC-I106  | Covered |
 | REQ-HTTP-080   | TC-I006, TC-I007                    | Covered |
 | REQ-HTTP-090   | TC-I008                             | Covered |
 | REQ-HTTP-110   | TC-I098                             | Covered |
@@ -1089,6 +1172,9 @@ for full descriptions.
 | REQ-K8S-250    | TC-I034                             | Covered |
 | REQ-K8S-260    | TC-I029                             | Covered |
 | REQ-K8S-270    | TC-I027                             | Covered |
+| REQ-K8S-280    | TC-I107, TC-I108                    | Covered |
+| REQ-K8S-290    | TC-I109, TC-I110                    | Covered |
+| REQ-K8S-300    | TC-I102, TC-I103                    | Covered |
 | REQ-MON-010    | TC-I040                             | Covered |
 | REQ-MON-020    | TC-I041                             | Covered |
 | REQ-MON-030    | TC-I042                             | Covered |

@@ -16,8 +16,8 @@ import (
 
 var _ = Describe("K8s Store", func() {
 	Describe("Rolling Update Pod Handling", func() {
-		// TC-I091: Get returns Running pod when 2 pods exist during rollout
-		It("returns Running pod when 2 pods exist during rollout (TC-I091)", func() {
+		// TC-I107: Get returns Running pod when 2 pods exist during rollout
+		It("returns Running pod when 2 pods exist during rollout (TC-I107)", func() {
 			s, client := newTestStore(defaultConfig())
 
 			// Create Deployment mid-rollout: UpdatedReplicas < Replicas
@@ -44,8 +44,8 @@ var _ = Describe("K8s Store", func() {
 			Expect(*result.Network.Ip).To(Equal("10.0.0.1"))
 		})
 
-		// TC-I092: Get returns newest pod when 2 pods exist during rollout (both Pending)
-		It("returns newest pod when 2 pods exist during rollout and none Running (TC-I092)", func() {
+		// TC-I108: Get returns newest pod when 2 pods exist during rollout (both Pending)
+		It("returns newest pod when 2 pods exist during rollout and none Running (TC-I108)", func() {
 			s, client := newTestStore(defaultConfig())
 
 			// Create Deployment mid-rollout
@@ -74,8 +74,8 @@ var _ = Describe("K8s Store", func() {
 			Expect(*result.Status).To(Equal(v1alpha1.PENDING))
 		})
 
-		// TC-I093: Get returns ConflictError when 2 pods exist but NO rollout in progress
-		It("returns ConflictError when 2 pods exist but no rollout (TC-I093)", func() {
+		// TC-I109: Get returns ConflictError when 2 pods exist but NO rollout in progress
+		It("returns ConflictError when 2 pods exist but no rollout (TC-I109)", func() {
 			s, client := newTestStore(defaultConfig())
 
 			// Deployment with stable status (no rollout)
@@ -99,8 +99,8 @@ var _ = Describe("K8s Store", func() {
 			Expect(errors.As(err, &conflictErr)).To(BeTrue(), "expected ConflictError, got: %v", err)
 		})
 
-		// TC-I094: Get returns ConflictError when 3+ pods exist regardless of rollout
-		It("returns ConflictError when 3+ pods exist regardless of rollout (TC-I094)", func() {
+		// TC-I110: Get returns ConflictError when 3+ pods exist regardless of rollout
+		It("returns ConflictError when 3+ pods exist regardless of rollout (TC-I110)", func() {
 			s, client := newTestStore(defaultConfig())
 
 			// Deployment mid-rollout

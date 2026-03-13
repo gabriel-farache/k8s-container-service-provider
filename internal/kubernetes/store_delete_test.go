@@ -57,8 +57,8 @@ var _ = Describe("K8s Store", func() {
 			Expect(deployErr).To(HaveOccurred())
 		})
 
-		// TC-I079: Delete returns conflict when multiple Deployments share the same instance ID
-		It("returns conflict when multiple Deployments share the same instance ID (TC-I079)", func() {
+		// TC-I103: Delete returns conflict when multiple Deployments share the same instance ID
+		It("returns conflict when multiple Deployments share the same instance ID (TC-I103)", func() {
 			s, client := newTestStore(defaultConfig())
 
 			// Create two Deployments with the same instance ID but different names

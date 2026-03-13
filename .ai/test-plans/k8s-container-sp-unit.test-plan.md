@@ -874,7 +874,7 @@ dedicated test class or `Describe` block.
 | Requirement   | Test Cases                        | Status  |
 |---------------|-----------------------------------|---------|
 | REQ-HTTP-050  | TC-U002, TC-U004                  | Covered |
-| REQ-HTTP-070  | TC-I080, TC-I086, TC-I087, TC-I102 (integration)  | Covered |
+| REQ-HTTP-070  | TC-I102, TC-I104, TC-I105, TC-I106 (integration)  | Covered |
 | REQ-HTTP-090  | TC-U057 (via TC-I008), TC-U058 (via TC-I008), TC-U067 (via TC-U014), TC-U073–TC-U077 | Covered |
 | REQ-HTTP-091  | TC-U070                           | Covered |
 | REQ-HLT-010   | TC-U005                           | Covered |
@@ -919,7 +919,7 @@ dedicated test class or `Describe` block.
 | REQ-XC-ERR-010| TC-U022                           | Covered |
 | REQ-XC-ERR-020| TC-U022                           | Covered |
 | REQ-XC-ERR-030| TC-U071                           | Covered |
-| REQ-XC-ERR-040| TC-U051, TC-I080 (integration)    | Covered |
+| REQ-XC-ERR-040| TC-U051, TC-I104 (integration)    | Covered |
 | REQ-REG-070   | TC-U061                           | Covered |
 | REQ-XC-CFG-010| TC-U002, TC-U004, TC-U063         | Covered |
 | REQ-XC-CFG-020| TC-U063                           | Covered |

@@ -23,6 +23,7 @@ import (
 	"github.com/dcm-project/k8s-container-service-provider/internal/apiserver"
 	"github.com/dcm-project/k8s-container-service-provider/internal/config"
 	"github.com/dcm-project/k8s-container-service-provider/internal/handlers/container"
+	"github.com/dcm-project/k8s-container-service-provider/internal/store"
 )
 
 // syncBuffer is a goroutine-safe bytes.Buffer for capturing log output
@@ -90,15 +91,52 @@ func (b *blockingListHandler) ListContainers(_ http.ResponseWriter, r *http.Requ
 	close(b.ctxCancelled)
 }
 
+// mockContainerRepo implements store.ContainerRepository for integration tests.
+// Only wire the methods your test needs; unconfigured methods panic.
+type mockContainerRepo struct {
+	CreateFunc func(ctx context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error)
+	GetFunc    func(ctx context.Context, containerID string) (*v1alpha1.Container, error)
+	ListFunc   func(ctx context.Context, maxPageSize int32, pageToken string) (*v1alpha1.ContainerList, error)
+	DeleteFunc func(ctx context.Context, containerID string) error
+}
+
+func (m *mockContainerRepo) Create(ctx context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
+	if m.CreateFunc == nil {
+		panic("unexpected call to Create")
+	}
+	return m.CreateFunc(ctx, c, id)
+}
+
+func (m *mockContainerRepo) Get(ctx context.Context, containerID string) (*v1alpha1.Container, error) {
+	if m.GetFunc == nil {
+		panic("unexpected call to Get")
+	}
+	return m.GetFunc(ctx, containerID)
+}
+
+func (m *mockContainerRepo) List(ctx context.Context, maxPageSize int32, pageToken string) (*v1alpha1.ContainerList, error) {
+	if m.ListFunc == nil {
+		panic("unexpected call to List")
+	}
+	return m.ListFunc(ctx, maxPageSize, pageToken)
+}
+
+func (m *mockContainerRepo) Delete(ctx context.Context, containerID string) error {
+	if m.DeleteFunc == nil {
+		panic("unexpected call to Delete")
+	}
+	return m.DeleteFunc(ctx, containerID)
+}
+
 var _ = Describe("HTTP Server", func() {
-	// startServer is a helper that creates a server with the given config,
-	// starts it in a goroutine, and returns the address, cancel/cleanup
-	// functions.
+	// startServerWithRepo is a helper that creates a server with an explicit
+	// ContainerRepository, starts it in a goroutine, and returns the address,
+	// cancel/cleanup functions.
 	//
 	// When signals are non-nil, the context is wired to those OS signals
 	// via signal.NotifyContext so the server shuts down on signal delivery.
 	// When signals is nil, a plain context.WithCancel is used.
-	startServer := func(cfg *config.Config, logBuf *syncBuffer, signals []os.Signal, wrappers ...func(http.Handler) http.Handler) (
+	startServerWithRepo := func(cfg *config.Config, logBuf *syncBuffer, signals []os.Signal, repo store.ContainerRepository, wrappers ...func(http.Handler) http.Handler) (
 		addr string,
 		cancel context.CancelFunc,
 		errCh chan error,
@@ -110,7 +148,7 @@ var _ = Describe("HTTP Server", func() {
 			logger = slog.New(slog.NewJSONHandler(io.Discard, nil))
 		}
 
-		ch := container.NewHandler(nil, logger, time.Now(), "0.0.1-test")
+		ch := container.NewHandler(repo, logger, time.Now(), "0.0.1-test")
 		h := oapigen.NewStrictHandlerWithOptions(ch, nil, oapigen.StrictHTTPServerOptions{})
 		srv := apiserver.New(cfg, logger, h)
 		Expect(srv).NotTo(BeNil(), "New() must return a non-nil server")
@@ -150,6 +188,15 @@ var _ = Describe("HTTP Server", func() {
 		}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 
 		return addr, cancel, errCh
+	}
+
+	// startServer is a convenience wrapper that uses a nil repository.
+	startServer := func(cfg *config.Config, logBuf *syncBuffer, signals []os.Signal, wrappers ...func(http.Handler) http.Handler) (
+		addr string,
+		cancel context.CancelFunc,
+		errCh chan error,
+	) {
+		return startServerWithRepo(cfg, logBuf, signals, nil, wrappers...)
 	}
 
 	defaultConfig := func() *config.Config {
@@ -425,8 +472,8 @@ var _ = Describe("HTTP Server", func() {
 		Entry("invalid container_id pattern", "GET", "/api/v1alpha1/containers/UPPERCASE_ID", "container_id with uppercase characters"),
 	)
 
-	// TC-I080: Panic recovery returns RFC 7807 JSON
-	It("returns RFC 7807 JSON on handler panic (TC-I080)", func() {
+	// TC-I104: Panic recovery returns RFC 7807 JSON
+	It("returns RFC 7807 JSON on handler panic (TC-I104)", func() {
 		// Use a custom handler that panics inside a route handler,
 		// ensuring the panic occurs within the chi middleware chain
 		// where the recovery middleware can catch it.
@@ -493,8 +540,8 @@ var _ = Describe("HTTP Server", func() {
 			"memory addresses must not leak")
 	})
 
-	// TC-I086: http.ErrAbortHandler is re-panicked (connection aborted)
-	It("re-panics http.ErrAbortHandler so the connection is aborted (TC-I086)", func() {
+	// TC-I105: http.ErrAbortHandler is re-panicked (connection aborted)
+	It("re-panics http.ErrAbortHandler so the connection is aborted (TC-I105)", func() {
 		var logBuf syncBuffer
 		h := &abortOnListHandler{}
 		logger := slog.New(slog.NewJSONHandler(&logBuf, nil))
@@ -534,8 +581,8 @@ var _ = Describe("HTTP Server", func() {
 		Consistently(logBuf.String).WithTimeout(200 * time.Millisecond).WithPolling(50 * time.Millisecond).ShouldNot(ContainSubstring("panic recovered"))
 	})
 
-	// TC-I087: Headers-already-sent panic logs without writing RFC 7807
-	It("logs headers-already-sent without overwriting the status (TC-I087)", func() {
+	// TC-I106: Headers-already-sent panic logs without writing RFC 7807
+	It("logs headers-already-sent without overwriting the status (TC-I106)", func() {
 		var logBuf syncBuffer
 		h := &headersThenPanicOnListHandler{}
 		logger := slog.New(slog.NewJSONHandler(&logBuf, nil))
@@ -834,14 +881,16 @@ var _ = Describe("HTTP Server", func() {
 		Expect(healthJSON).To(HaveKey("uptime"))
 	})
 
-	// TC-I097: Request logging — error request
-	// Note: the default startServer uses a nil-repo handler, so
-	// GetContainer panics. With recovery outermost, the panic is
-	// caught by recovery (logged at ERROR) before the request logging
-	// middleware can record the status.
+	// TC-I097: Request logging — error request (404)
 	It("logs HTTP error requests with correct status (TC-I097)", func() {
+		repo := &mockContainerRepo{
+			GetFunc: func(_ context.Context, _ string) (*v1alpha1.Container, error) {
+				return nil, &store.NotFoundError{ID: "nonexistent-id"}
+			},
+		}
+
 		var logBuf syncBuffer
-		addr, cancel, errCh := startServer(defaultConfig(), &logBuf, nil)
+		addr, cancel, errCh := startServerWithRepo(defaultConfig(), &logBuf, nil, repo)
 		defer func() {
 			cancel()
 			Eventually(errCh).WithTimeout(10 * time.Second).Should(Receive())
@@ -851,12 +900,12 @@ var _ = Describe("HTTP Server", func() {
 		Expect(err).NotTo(HaveOccurred())
 		_ = resp.Body.Close()
 
-		Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
+		Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
 
-		// With recovery middleware outermost, panic cases are logged
-		// by recovery at ERROR level (not by request logging middleware).
-		Eventually(logBuf.String).WithTimeout(2 * time.Second).WithPolling(50 * time.Millisecond).Should(
-			ContainSubstring(`"level":"ERROR"`),
-		)
+		Eventually(logBuf.String).WithTimeout(2 * time.Second).WithPolling(50 * time.Millisecond).Should(And(
+			ContainSubstring(`"method":"GET"`),
+			ContainSubstring(`"path":"/api/v1alpha1/containers/nonexistent-id"`),
+			ContainSubstring(`"status":404`),
+		))
 	})
 })
