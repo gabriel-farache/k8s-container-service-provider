@@ -72,7 +72,7 @@ func requestInstance(r *http.Request) *string {
 const readinessProbeTimeout = 5 * time.Second
 
 // readinessProbeInterval is the polling interval for the self-probe that
-// checks the /health endpoint before firing onReady.
+// checks the health endpoint before firing onReady.
 const readinessProbeInterval = 50 * time.Millisecond
 
 // WithOnReady registers a callback invoked once the server is confirmed to be
@@ -263,10 +263,10 @@ func requestLoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handl
 	}
 }
 
-// waitForReady polls the server's /health endpoint until it returns HTTP 200
+// waitForReady polls the server's health endpoint until it returns HTTP 200
 // or the context/timeout expires.
 func (s *Server) waitForReady(ctx context.Context, addr string) error {
-	url := fmt.Sprintf("http://%s/health", addr)
+	url := fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr)
 	client := &http.Client{Timeout: 1 * time.Second}
 
 	deadline := time.NewTimer(readinessProbeTimeout)
@@ -333,11 +333,6 @@ func New(cfg *config.Config, logger *slog.Logger, handler oapigen.ServerInterfac
 	} else {
 		r.Get(postPath+"/", emptyIDHandler)
 		r.Delete(postPath+"/", emptyIDHandler)
-
-		// Serve health at the resource-relative path for DCM health check
-		// compatibility. DCM constructs health URLs as endpoint + "/health",
-		// and the registered endpoint is {base}/api/v1alpha1/containers.
-		r.Get(postPath+"/health", handler.GetHealth)
 	}
 
 	httpHandler := oapigen.HandlerWithOptions(handler, oapigen.ChiServerOptions{

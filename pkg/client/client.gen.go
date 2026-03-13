@@ -98,14 +98,14 @@ type ClientInterface interface {
 
 	CreateContainer(ctx context.Context, params *CreateContainerParams, body CreateContainerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetHealth request
+	GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteContainer request
 	DeleteContainer(ctx context.Context, containerId ContainerIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetContainer request
 	GetContainer(ctx context.Context, containerId ContainerIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetHealth request
-	GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) ListContainers(ctx context.Context, params *ListContainersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -144,6 +144,18 @@ func (c *Client) CreateContainer(ctx context.Context, params *CreateContainerPar
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetHealthRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) DeleteContainer(ctx context.Context, containerId ContainerIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteContainerRequest(c.Server, containerId)
 	if err != nil {
@@ -158,18 +170,6 @@ func (c *Client) DeleteContainer(ctx context.Context, containerId ContainerIdPat
 
 func (c *Client) GetContainer(ctx context.Context, containerId ContainerIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetContainerRequest(c.Server, containerId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetHealthRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -307,6 +307,33 @@ func NewCreateContainerRequestWithBody(server string, params *CreateContainerPar
 	return req, nil
 }
 
+// NewGetHealthRequest generates requests for GetHealth
+func NewGetHealthRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1alpha1/containers/health")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewDeleteContainerRequest generates requests for DeleteContainer
 func NewDeleteContainerRequest(server string, containerId ContainerIdPath) (*http.Request, error) {
 	var err error
@@ -375,33 +402,6 @@ func NewGetContainerRequest(server string, containerId ContainerIdPath) (*http.R
 	return req, nil
 }
 
-// NewGetHealthRequest generates requests for GetHealth
-func NewGetHealthRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/health")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -453,14 +453,14 @@ type ClientWithResponsesInterface interface {
 
 	CreateContainerWithResponse(ctx context.Context, params *CreateContainerParams, body CreateContainerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateContainerResponse, error)
 
+	// GetHealthWithResponse request
+	GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error)
+
 	// DeleteContainerWithResponse request
 	DeleteContainerWithResponse(ctx context.Context, containerId ContainerIdPath, reqEditors ...RequestEditorFn) (*DeleteContainerResponse, error)
 
 	// GetContainerWithResponse request
 	GetContainerWithResponse(ctx context.Context, containerId ContainerIdPath, reqEditors ...RequestEditorFn) (*GetContainerResponse, error)
-
-	// GetHealthWithResponse request
-	GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error)
 }
 
 type ListContainersResponse struct {
@@ -510,6 +510,28 @@ func (r CreateContainerResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateContainerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetHealthResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Health
+}
+
+// Status returns HTTPResponse.Status
+func (r GetHealthResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetHealthResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -567,28 +589,6 @@ func (r GetContainerResponse) StatusCode() int {
 	return 0
 }
 
-type GetHealthResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *Health
-}
-
-// Status returns HTTPResponse.Status
-func (r GetHealthResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetHealthResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 // ListContainersWithResponse request returning *ListContainersResponse
 func (c *ClientWithResponses) ListContainersWithResponse(ctx context.Context, params *ListContainersParams, reqEditors ...RequestEditorFn) (*ListContainersResponse, error) {
 	rsp, err := c.ListContainers(ctx, params, reqEditors...)
@@ -615,6 +615,15 @@ func (c *ClientWithResponses) CreateContainerWithResponse(ctx context.Context, p
 	return ParseCreateContainerResponse(rsp)
 }
 
+// GetHealthWithResponse request returning *GetHealthResponse
+func (c *ClientWithResponses) GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error) {
+	rsp, err := c.GetHealth(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetHealthResponse(rsp)
+}
+
 // DeleteContainerWithResponse request returning *DeleteContainerResponse
 func (c *ClientWithResponses) DeleteContainerWithResponse(ctx context.Context, containerId ContainerIdPath, reqEditors ...RequestEditorFn) (*DeleteContainerResponse, error) {
 	rsp, err := c.DeleteContainer(ctx, containerId, reqEditors...)
@@ -631,15 +640,6 @@ func (c *ClientWithResponses) GetContainerWithResponse(ctx context.Context, cont
 		return nil, err
 	}
 	return ParseGetContainerResponse(rsp)
-}
-
-// GetHealthWithResponse request returning *GetHealthResponse
-func (c *ClientWithResponses) GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error) {
-	rsp, err := c.GetHealth(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetHealthResponse(rsp)
 }
 
 // ParseListContainersResponse parses an HTTP response from a ListContainersWithResponse call
@@ -757,6 +757,32 @@ func ParseCreateContainerResponse(rsp *http.Response) (*CreateContainerResponse,
 	return response, nil
 }
 
+// ParseGetHealthResponse parses an HTTP response from a GetHealthWithResponse call
+func ParseGetHealthResponse(rsp *http.Response) (*GetHealthResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetHealthResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Health
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseDeleteContainerResponse parses an HTTP response from a DeleteContainerWithResponse call
 func ParseDeleteContainerResponse(rsp *http.Response) (*DeleteContainerResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -852,32 +878,6 @@ func ParseGetContainerResponse(rsp *http.Response) (*GetContainerResponse, error
 			return nil, err
 		}
 		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetHealthResponse parses an HTTP response from a GetHealthWithResponse call
-func ParseGetHealthResponse(rsp *http.Response) (*GetHealthResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetHealthResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Health
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
 
 	}
 

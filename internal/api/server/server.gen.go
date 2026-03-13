@@ -23,15 +23,15 @@ type ServerInterface interface {
 	// Create Container
 	// (POST /api/v1alpha1/containers)
 	CreateContainer(w http.ResponseWriter, r *http.Request, params CreateContainerParams)
+	// Health Check
+	// (GET /api/v1alpha1/containers/health)
+	GetHealth(w http.ResponseWriter, r *http.Request)
 	// Delete Container
 	// (DELETE /api/v1alpha1/containers/{container_id})
 	DeleteContainer(w http.ResponseWriter, r *http.Request, containerId ContainerIdPath)
 	// Get Container
 	// (GET /api/v1alpha1/containers/{container_id})
 	GetContainer(w http.ResponseWriter, r *http.Request, containerId ContainerIdPath)
-	// Health Check
-	// (GET /health)
-	GetHealth(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -50,6 +50,12 @@ func (_ Unimplemented) CreateContainer(w http.ResponseWriter, r *http.Request, p
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Health Check
+// (GET /api/v1alpha1/containers/health)
+func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Delete Container
 // (DELETE /api/v1alpha1/containers/{container_id})
 func (_ Unimplemented) DeleteContainer(w http.ResponseWriter, r *http.Request, containerId ContainerIdPath) {
@@ -59,12 +65,6 @@ func (_ Unimplemented) DeleteContainer(w http.ResponseWriter, r *http.Request, c
 // Get Container
 // (GET /api/v1alpha1/containers/{container_id})
 func (_ Unimplemented) GetContainer(w http.ResponseWriter, r *http.Request, containerId ContainerIdPath) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Health Check
-// (GET /health)
-func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -139,6 +139,20 @@ func (siw *ServerInterfaceWrapper) CreateContainer(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
+// GetHealth operation middleware
+func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // DeleteContainer operation middleware
 func (siw *ServerInterfaceWrapper) DeleteContainer(w http.ResponseWriter, r *http.Request) {
 
@@ -180,20 +194,6 @@ func (siw *ServerInterfaceWrapper) GetContainer(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetContainer(w, r, containerId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetHealth operation middleware
-func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetHealth(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -323,13 +323,13 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/api/v1alpha1/containers", wrapper.CreateContainer)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1alpha1/containers/health", wrapper.GetHealth)
+	})
+	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/api/v1alpha1/containers/{container_id}", wrapper.DeleteContainer)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1alpha1/containers/{container_id}", wrapper.GetContainer)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/health", wrapper.GetHealth)
 	})
 
 	return r
@@ -451,6 +451,22 @@ func (response CreateContainer500ApplicationProblemPlusJSONResponse) VisitCreate
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetHealthRequestObject struct {
+}
+
+type GetHealthResponseObject interface {
+	VisitGetHealthResponse(w http.ResponseWriter) error
+}
+
+type GetHealth200JSONResponse Health
+
+func (response GetHealth200JSONResponse) VisitGetHealthResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type DeleteContainerRequestObject struct {
 	ContainerId ContainerIdPath `json:"container_id"`
 }
@@ -556,22 +572,6 @@ func (response GetContainer500ApplicationProblemPlusJSONResponse) VisitGetContai
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetHealthRequestObject struct {
-}
-
-type GetHealthResponseObject interface {
-	VisitGetHealthResponse(w http.ResponseWriter) error
-}
-
-type GetHealth200JSONResponse Health
-
-func (response GetHealth200JSONResponse) VisitGetHealthResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// List Containers
@@ -580,15 +580,15 @@ type StrictServerInterface interface {
 	// Create Container
 	// (POST /api/v1alpha1/containers)
 	CreateContainer(ctx context.Context, request CreateContainerRequestObject) (CreateContainerResponseObject, error)
+	// Health Check
+	// (GET /api/v1alpha1/containers/health)
+	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
 	// Delete Container
 	// (DELETE /api/v1alpha1/containers/{container_id})
 	DeleteContainer(ctx context.Context, request DeleteContainerRequestObject) (DeleteContainerResponseObject, error)
 	// Get Container
 	// (GET /api/v1alpha1/containers/{container_id})
 	GetContainer(ctx context.Context, request GetContainerRequestObject) (GetContainerResponseObject, error)
-	// Health Check
-	// (GET /health)
-	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -679,6 +679,30 @@ func (sh *strictHandler) CreateContainer(w http.ResponseWriter, r *http.Request,
 	}
 }
 
+// GetHealth operation middleware
+func (sh *strictHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
+	var request GetHealthRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetHealth(ctx, request.(GetHealthRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetHealth")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetHealthResponseObject); ok {
+		if err := validResponse.VisitGetHealthResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // DeleteContainer operation middleware
 func (sh *strictHandler) DeleteContainer(w http.ResponseWriter, r *http.Request, containerId ContainerIdPath) {
 	var request DeleteContainerRequestObject
@@ -724,30 +748,6 @@ func (sh *strictHandler) GetContainer(w http.ResponseWriter, r *http.Request, co
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetContainerResponseObject); ok {
 		if err := validResponse.VisitGetContainerResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetHealth operation middleware
-func (sh *strictHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
-	var request GetHealthRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetHealth(ctx, request.(GetHealthRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetHealth")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetHealthResponseObject); ok {
-		if err := validResponse.VisitGetHealthResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

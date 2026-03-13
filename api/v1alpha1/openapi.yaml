@@ -23,7 +23,7 @@ tags:
     description: Container lifecycle management operations
 
 paths:
-  /health:
+  /api/v1alpha1/containers/health:
     get:
       summary: Health Check
       description: Returns the health status of the service

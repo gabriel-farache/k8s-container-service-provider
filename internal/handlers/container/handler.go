@@ -44,6 +44,10 @@ func (h *Handler) CreateContainer(ctx context.Context, req oapigen.CreateContain
 
 	requestPath := containersBasePath
 
+	if err := validateContainerID(id); err != nil {
+		return newCreateError400(err.Error(), requestPath), nil
+	}
+
 	if err := validateResources(req.Body.Resources); err != nil {
 		return newCreateError400(err.Error(), requestPath), nil
 	}

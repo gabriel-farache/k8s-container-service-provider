@@ -273,6 +273,25 @@ var _ = Describe("Container API Handlers", func() {
 				Entry("no unit in min", "1024", "2GB"),
 			)
 
+			// TC-U078: rejects reserved "health" container ID
+			It("rejects reserved health container ID (TC-U078)", func() {
+				body := validCreateBody()
+				clientID := "health"
+
+				req := oapigen.CreateContainerRequestObject{
+					Params: v1alpha1.CreateContainerParams{Id: util.Ptr(clientID)},
+					Body:   &body,
+				}
+
+				resp, err := h.CreateContainer(context.Background(), req)
+				Expect(err).NotTo(HaveOccurred())
+
+				errResp, ok := resp.(oapigen.CreateContainer400ApplicationProblemPlusJSONResponse)
+				Expect(ok).To(BeTrue(), "expected 400 response for reserved ID")
+				Expect(errResp.Type).To(Equal(v1alpha1.INVALIDARGUMENT))
+				Expect(*errResp.Detail).To(ContainSubstring("reserved"))
+			})
+
 			// TC-U049: rejects DCM label collision
 			DescribeTable("rejects DCM label collision (TC-U049)",
 				func(label string) {

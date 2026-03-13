@@ -179,7 +179,7 @@ var _ = Describe("HTTP Server", func() {
 		// already bound so TCP connects immediately, but we need Serve()
 		// to be running to get an HTTP response.
 		Eventually(func() error {
-			resp, reqErr := http.Get(fmt.Sprintf("http://%s/health", addr))
+			resp, reqErr := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 			if reqErr != nil {
 				return reqErr
 			}
@@ -216,7 +216,7 @@ var _ = Describe("HTTP Server", func() {
 			Eventually(errCh).WithTimeout(10 * time.Second).Should(Receive())
 		}()
 
-		resp, err := http.Get(fmt.Sprintf("http://%s/health", addr))
+		resp, err := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 		Expect(err).NotTo(HaveOccurred())
 		defer func() { _ = resp.Body.Close() }()
 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
@@ -238,7 +238,7 @@ var _ = Describe("HTTP Server", func() {
 		}
 
 		routes := []routeCheck{
-			{"GET", "/health"},
+			{"GET", "/api/v1alpha1/containers/health"},
 			{"GET", "/api/v1alpha1/containers"},
 			{"POST", "/api/v1alpha1/containers"},
 			{"GET", "/api/v1alpha1/containers/test-id"},
@@ -331,7 +331,7 @@ var _ = Describe("HTTP Server", func() {
 		Eventually(errCh).WithTimeout(10 * time.Second).Should(Receive(BeNil()))
 
 		// New connections should be refused after shutdown.
-		_, err = http.Get(fmt.Sprintf("http://%s/health", addr))
+		_, err = http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -381,7 +381,7 @@ var _ = Describe("HTTP Server", func() {
 
 		Eventually(errCh).WithTimeout(10 * time.Second).Should(Receive(BeNil()))
 
-		_, err = http.Get(fmt.Sprintf("http://%s/health", addr))
+		_, err = http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -497,7 +497,7 @@ var _ = Describe("HTTP Server", func() {
 
 		// Wait for the server to be ready.
 		Eventually(func() error {
-			resp, reqErr := http.Get(fmt.Sprintf("http://%s/health", addr))
+			resp, reqErr := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 			if reqErr != nil {
 				return reqErr
 			}
@@ -563,7 +563,7 @@ var _ = Describe("HTTP Server", func() {
 
 		// Wait for the server to be ready.
 		Eventually(func() error {
-			resp, reqErr := http.Get(fmt.Sprintf("http://%s/health", addr))
+			resp, reqErr := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 			if reqErr != nil {
 				return reqErr
 			}
@@ -604,7 +604,7 @@ var _ = Describe("HTTP Server", func() {
 
 		// Wait for the server to be ready.
 		Eventually(func() error {
-			resp, reqErr := http.Get(fmt.Sprintf("http://%s/health", addr))
+			resp, reqErr := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 			if reqErr != nil {
 				return reqErr
 			}
@@ -658,7 +658,7 @@ var _ = Describe("HTTP Server", func() {
 
 		// Server should still accept requests after the panic.
 		Eventually(func() error {
-			resp, reqErr := http.Get(fmt.Sprintf("http://%s/health", addr))
+			resp, reqErr := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 			if reqErr != nil {
 				return reqErr
 			}
@@ -704,7 +704,7 @@ var _ = Describe("HTTP Server", func() {
 		// The server should be serving because Run's internal probe passed
 		// before onReady was called. Verify externally.
 		Eventually(func() error {
-			resp, reqErr := http.Get(fmt.Sprintf("http://%s/health", addr))
+			resp, reqErr := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 			if reqErr != nil {
 				return reqErr
 			}
@@ -794,13 +794,13 @@ var _ = Describe("HTTP Server", func() {
 			Eventually(errCh).WithTimeout(10 * time.Second).Should(Receive())
 		}()
 
-		resp, err := http.Get(fmt.Sprintf("http://%s/health", addr))
+		resp, err := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 		Expect(err).NotTo(HaveOccurred())
 		_ = resp.Body.Close()
 
 		Eventually(logBuf.String).WithTimeout(2 * time.Second).WithPolling(50 * time.Millisecond).Should(And(
 			ContainSubstring(`"method":"GET"`),
-			ContainSubstring(`"path":"/health"`),
+			ContainSubstring(`"path":"/api/v1alpha1/containers/health"`),
 			ContainSubstring(`"status":200`),
 			ContainSubstring(`"duration"`),
 		))
@@ -837,7 +837,7 @@ var _ = Describe("HTTP Server", func() {
 
 		// Wait for the server to be ready.
 		Eventually(func() error {
-			resp, reqErr := http.Get(fmt.Sprintf("http://%s/health", addr))
+			resp, reqErr := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 			if reqErr != nil {
 				return reqErr
 			}

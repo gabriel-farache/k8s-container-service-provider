@@ -81,7 +81,7 @@ var _ = Describe("Container API Handlers - Request Validation", func() {
 
 		// Wait for server to be ready.
 		Eventually(func() error {
-			resp, reqErr := http.Get(fmt.Sprintf("http://%s/health", addr))
+			resp, reqErr := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 			if reqErr != nil {
 				return reqErr
 			}
@@ -299,7 +299,7 @@ var _ = Describe("Container API Handlers - Request Validation", func() {
 		}()
 
 		Eventually(func() error {
-			resp, reqErr := http.Get(fmt.Sprintf("http://%s/health", addr))
+			resp, reqErr := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers/health", addr))
 			if reqErr != nil {
 				return reqErr
 			}

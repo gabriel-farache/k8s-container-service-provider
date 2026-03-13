@@ -8,6 +8,19 @@ import (
 	"github.com/dcm-project/k8s-container-service-provider/internal/units"
 )
 
+// reservedContainerIDs contains container IDs that cannot be used because
+// they would collide with fixed API paths under /api/v1alpha1/containers/.
+var reservedContainerIDs = map[string]bool{
+	"health": true,
+}
+
+func validateContainerID(id string) error {
+	if reservedContainerIDs[id] {
+		return fmt.Errorf("container ID %q is reserved and cannot be used", id)
+	}
+	return nil
+}
+
 func validateResources(res v1alpha1.ContainerResources) error {
 	if res.Cpu.Min > res.Cpu.Max {
 		return fmt.Errorf("cpu.min (%d) must not exceed cpu.max (%d)", res.Cpu.Min, res.Cpu.Max)
