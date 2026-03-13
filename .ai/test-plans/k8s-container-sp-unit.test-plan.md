@@ -310,6 +310,16 @@ construction, debounce, indexer functions, registration payload builders) are
   - `metadata.labels: {"dcm-service-type": "custom-type"}`
 - **Then:** Each returns HTTP `400` with RFC 7807 error body containing type `INVALID_ARGUMENT`
 
+### TC-U078: CreateContainer rejects reserved "health" container ID
+
+- **Requirement:** REQ-HLT-010
+- **AC:** AC-HLT-050
+- **Priority:** High
+- **Type:** Unit
+- **Given:** A valid container request body
+- **When:** `POST /api/v1alpha1/containers?id=health` is called
+- **Then:** HTTP status is `400` AND body is RFC 7807 error with type `INVALID_ARGUMENT` AND detail mentions the ID is reserved
+
 ### TC-U050: ListContainers rejects invalid page_token
 
 - **Requirement:** REQ-API-100 (see SC-006)
@@ -877,7 +887,7 @@ dedicated test class or `Describe` block.
 | REQ-HTTP-070  | TC-I102, TC-I104, TC-I105, TC-I106 (integration)  | Covered |
 | REQ-HTTP-090  | TC-U057 (via TC-I008), TC-U058 (via TC-I008), TC-U067 (via TC-U014), TC-U073–TC-U077 | Covered |
 | REQ-HTTP-091  | TC-U070                           | Covered |
-| REQ-HLT-010   | TC-U005                           | Covered |
+| REQ-HLT-010   | TC-U005, TC-U078                  | Covered |
 | REQ-HLT-020   | TC-U005, TC-U006                  | Covered |
 | REQ-HLT-030   | TC-U005 (transitively via generated `VisitGetHealthResponse` + TC-I001/I002) | Covered |
 | REQ-HLT-040   | TC-U007 (via TC-U005)             | Covered |

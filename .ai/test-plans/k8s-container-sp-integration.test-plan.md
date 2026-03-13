@@ -45,7 +45,7 @@ for full descriptions.
 - **Given:** The server is running
 - **When:** Requests are made to each defined endpoint
 - **Then:**
-  - `GET /health` does not return 404 or 405
+  - `GET /api/v1alpha1/containers/health` does not return 404 or 405
   - `GET /api/v1alpha1/containers` does not return 404 or 405
   - `POST /api/v1alpha1/containers` does not return 404 or 405
   - `GET /api/v1alpha1/containers/test-id` does not return 404 or 405
@@ -144,8 +144,8 @@ for full descriptions.
 - **Priority:** High
 - **Type:** Integration
 - **Given:** A running server with request logging middleware
-- **When:** `GET /health` is called
-- **Then:** The server log MUST contain an entry with method=GET, path=/health, status=200, and duration > 0
+- **When:** `GET /api/v1alpha1/containers/health` is called
+- **Then:** The server log MUST contain an entry with method=GET, path=/api/v1alpha1/containers/health, status=200, and duration > 0
 
 ### TC-I097: Request logging — error request
 
@@ -178,7 +178,7 @@ for full descriptions.
 ### TC-I103: Health endpoint at resource-relative path
 
 - **Requirement:** REQ-HLT-010
-- **AC:** AC-HLT-050
+- **AC:** AC-HLT-010
 - **Priority:** High
 - **Type:** Integration
 - **Given:** The server is running

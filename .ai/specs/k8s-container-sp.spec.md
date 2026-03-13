@@ -243,7 +243,7 @@ readiness vs liveness distinction (future enhancement).
 
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
-| REQ-HLT-010 | The SP MUST expose `GET /health` and return HTTP 200 OK. The health endpoint MUST also be accessible at the resource-relative path (`{resource_base_path}/health`, i.e., `/api/v1alpha1/containers/health`) for DCM health check compatibility | MUST | |
+| REQ-HLT-010 | The SP MUST expose `GET /api/v1alpha1/containers/health` and return HTTP 200 OK. The SPRM constructs health URLs as `{registered_endpoint}/health`, so the health endpoint MUST be at the resource-relative path | MUST | |
 | REQ-HLT-020 | The health response MUST return a JSON body conforming to the Health schema with `status`, `type`, `path`, `version`, and `uptime` fields | MUST | DD-070 |
 | REQ-HLT-030 | The response MUST set `Content-Type: application/json` | MUST | |
 | REQ-HLT-040 | The health endpoint MUST be lightweight and return quickly, suitable for 10-second polling intervals (no K8s API calls, no DB queries) | MUST | |
@@ -254,14 +254,14 @@ readiness vs liveness distinction (future enhancement).
 
 - **Validates:** REQ-HLT-010
 - **Given** the HTTP server is running
-- **When** a GET request is made to `/health`
+- **When** a GET request is made to `/api/v1alpha1/containers/health`
 - **Then** the SP MUST return HTTP 200 OK
 
 ##### AC-HLT-020: Health response body
 
 - **Validates:** REQ-HLT-020
 - **Given** the SP is healthy
-- **When** GET `/health` is called
+- **When** GET `/api/v1alpha1/containers/health` is called
 - **Then** the response body MUST contain:
   - `status`: `"healthy"`
   - `type`: `"k8s-container-service-provider.dcm.io/health"`
@@ -283,12 +283,12 @@ readiness vs liveness distinction (future enhancement).
 - **When** the request is processed
 - **Then** the handler MUST NOT perform expensive operations (no K8s API calls, no DB queries)
 
-##### AC-HLT-050: Health endpoint at resource-relative path
+##### AC-HLT-050: Reserved "health" container ID
 
 - **Validates:** REQ-HLT-010
-- **Given** the HTTP server is running
-- **When** a GET request is made to `/api/v1alpha1/containers/health`
-- **Then** the response MUST be HTTP 200 OK with the same Health JSON body as `/health`
+- **Given** the health endpoint is at `/api/v1alpha1/containers/health`
+- **When** a client attempts to create a container with ID `"health"`
+- **Then** the SP MUST reject the request with HTTP 400 INVALID_ARGUMENT because the ID would collide with the health endpoint path
 
 #### Dependencies
 
