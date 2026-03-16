@@ -36,7 +36,6 @@ type DCMConfig struct {
 type KubernetesConfig struct {
 	Namespace          string `env:"NAMESPACE"           envDefault:"default"`
 	Kubeconfig         string `env:"KUBECONFIG"`
-	CreateService      bool   `env:"CREATE_SERVICE"      envDefault:"false"`
 	DefaultServiceType string `env:"DEFAULT_SVC_TYPE"     envDefault:"ClusterIP"`
 }
 
