@@ -151,7 +151,7 @@ construction, debounce, indexer functions, registration payload builders) are
 - **Requirement:** REQ-API-090, REQ-HTTP-090 (OpenAPI contract enforcement)
 - **Priority:** High
 - **Type:** Unit (table-driven)
-- **Transitively covers:** TC-U052 (invalid serviceType), TC-U053 (invalid metadata.name format), TC-U054 (invalid memory format), TC-U055 (CPU below minimum), TC-U056 (port out of range), TC-U059 (network object without ports)
+- **Transitively covers:** TC-U052 (invalid serviceType), TC-U053 (invalid metadata.name format), TC-U054 (invalid memory format), TC-U055 (CPU below minimum), TC-U056 (port out of range)
 - **Given:** Request bodies each missing a required field or containing an invalid value
 - **When:** `POST` is called for each:
   - Missing `image` entirely
@@ -169,7 +169,6 @@ construction, debounce, indexer functions, registration payload builders) are
   - Invalid memory format (e.g., `"10XB"`) (TC-U054)
   - CPU value below minimum (e.g., `cpu.min=0`) (TC-U055)
   - Port out of range (e.g., `containerPort=99999`) (TC-U056)
-  - `network` object present without `ports` field (TC-U059)
 - **Then:** Each returns HTTP `400` with RFC 7807 error body containing type `INVALID_ARGUMENT`
 
 ### TC-U015: ListContainers returns 200 with containers
@@ -318,6 +317,37 @@ construction, debounce, indexer functions, registration payload builders) are
 - **Given:** A valid container request body
 - **When:** `POST /api/v1alpha1/containers?id=health` is called
 - **Then:** HTTP status is `400` AND body is RFC 7807 error with type `INVALID_ARGUMENT` AND detail mentions the ID is reserved
+
+### TC-U079: CreateContainer accepts spec-wrapped body
+
+- **Requirement:** REQ-API-200
+- **AC:** AC-API-200
+- **Priority:** High
+- **Type:** Unit
+- **Given:** POST body is `{"spec": {<valid-container-fields>}}`
+- **When:** `POST /api/v1alpha1/containers` is called (mock repository returns success)
+- **Then:** HTTP status is `201` AND mock repository receives unwrapped Container (not the wrapper)
+
+### TC-U080: Raw Container body rejected by OpenAPI middleware
+
+- **Requirement:** REQ-API-200
+- **AC:** AC-API-210
+- **Priority:** High
+- **Type:** Unit
+- **Given:** POST body is a raw Container without `spec` wrapper
+- **When:** OpenAPI validation middleware processes the request
+- **Then:** HTTP status is `400` with RFC 7807 error containing type `INVALID_ARGUMENT`
+- **Referenced by:** TC-U014 (server_validation_test.go)
+
+### TC-U081: CreateContainer accepts provider_hints
+
+- **Requirement:** REQ-API-210
+- **AC:** AC-API-220
+- **Priority:** High
+- **Type:** Unit
+- **Given:** POST body includes `"provider_hints": {"gpu": true}` in the container spec
+- **When:** `POST /api/v1alpha1/containers` is called (mock repository returns success)
+- **Then:** HTTP status is `201` AND provider_hints do not affect store call
 
 ### TC-U050: ListContainers rejects invalid page_token
 
@@ -749,15 +779,16 @@ dedicated test class or `Describe` block.
 - **Then:** The request is rejected with 400 Bad Request
 - **Referenced by:** TC-I008 (Malformed requests integration test)
 
-#### TC-U059: network object without ports field rejected
+#### TC-U059: network object without ports field accepted
 
-- **Requirement:** REQ-API-090
+- **Requirement:** REQ-K8S-155
+- **AC:** AC-K8S-152
 - **Priority:** Medium
 - **Type:** Unit (validation sub-case)
 - **Given:** A request body with `network: {}` (object present, but no `ports` field)
-- **When:** OpenAPI validation is applied
-- **Then:** The request is rejected with 400 INVALID_ARGUMENT
-- **Referenced by:** TC-U014 (CreateContainer validates request body)
+- **When:** The request is processed
+- **Then:** The request is accepted (201) — no Service is created, no error
+- **Referenced by:** TC-I111 (Network without ports creates no Service)
 
 ### Registration Payload
 
@@ -899,7 +930,7 @@ dedicated test class or `Describe` block.
 | REQ-API-060   | TC-U009                           | Covered |
 | REQ-API-070   | TC-U009                           | Covered |
 | REQ-API-080   | TC-U013, TC-U046                  | Covered |
-| REQ-API-090   | TC-U014, TC-U048, TC-U049, TC-U052–TC-U056, TC-U059, TC-U067 (via TC-U014), TC-U069 | Covered |
+| REQ-API-090   | TC-U014, TC-U048, TC-U049, TC-U052–TC-U056, TC-U067 (via TC-U014), TC-U069 | Covered |
 | REQ-API-100   | TC-U015, TC-U050                  | Covered |
 | REQ-API-110   | TC-U016                           | Covered |
 | REQ-API-120   | TC-U017                           | Covered |
@@ -909,9 +940,12 @@ dedicated test class or `Describe` block.
 | REQ-API-160   | TC-U021                           | Covered |
 | REQ-API-170   | TC-U022                           | Covered |
 | REQ-API-180   | TC-U023, TC-U051                  | Covered |
+| REQ-API-200   | TC-U079, TC-U080                  | Covered |
+| REQ-API-210   | TC-U081                           | Covered |
 | REQ-STR-010   | TC-U024 (via TC-I009)             | Covered |
 | REQ-STR-080   | TC-U025 (via TC-U019/U021), TC-U026 (via TC-U013) | Covered |
 | REQ-K8S-040   | TC-U027 (via TC-I012)             | Covered |
+| REQ-K8S-155   | TC-U059 (via TC-I111)             | Covered |
 | REQ-K8S-050   | TC-U028 (via TC-I013)             | Covered |
 | REQ-K8S-230   | TC-U029 (via TC-U031, TC-I062–I064), TC-U030 (via TC-I065) | Covered |
 | REQ-MON-040   | TC-U042 (via TC-I043)             | Covered |

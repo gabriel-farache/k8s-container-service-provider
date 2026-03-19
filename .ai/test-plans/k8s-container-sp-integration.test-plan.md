@@ -409,6 +409,27 @@ for full descriptions.
 - **When:** `Create` is called
 - **Then:** No Service is created AND Deployment is created successfully
 
+### TC-I111: Network without ports creates no Service
+
+- **Requirement:** REQ-K8S-155
+- **AC:** AC-K8S-152
+- **Priority:** High
+- **Type:** Integration
+- **Transitively covers:** TC-U059 (network object without ports field accepted)
+- **Given:** Container with `"network": {}` (ports absent)
+- **When:** `Create` is called
+- **Then:** Deployment is created successfully AND no Service is created
+
+### TC-I112: Provider hints do not affect K8s resources
+
+- **Requirement:** REQ-API-210
+- **AC:** AC-API-220
+- **Priority:** High
+- **Type:** Integration
+- **Given:** Container with `"provider_hints": {"placement": "gpu-node"}` and a port with `visibility=internal`
+- **When:** `Create` is called
+- **Then:** Deployment is created normally AND Service is created as expected AND hints do not alter any K8s resource
+
 ### TC-I027: Service carries DCM labels with internal visibility
 
 - **Requirement:** REQ-K8S-270
@@ -1141,6 +1162,7 @@ for full descriptions.
 | REQ-API-070    | TC-I075, TC-I076                    | Covered |
 | REQ-API-151    | TC-I037                             | Covered |
 | REQ-API-180    | TC-I081                             | Covered |
+| REQ-API-210    | TC-I112                             | Covered |
 | REQ-STR-020    | TC-I009                             | Covered |
 | REQ-STR-030    | TC-I028                             | Covered |
 | REQ-STR-040    | TC-I030, TC-I032                    | Covered |
@@ -1162,6 +1184,7 @@ for full descriptions.
 | REQ-K8S-120    | TC-I023                             | Covered |
 | REQ-K8S-125    | TC-I024, TC-I074, TC-I092           | Covered |
 | REQ-K8S-150    | TC-I025, TC-I026                    | Covered |
+| REQ-K8S-155    | TC-I111                             | Covered |
 | REQ-K8S-170    | TC-I028, TC-I069                    | Covered |
 | REQ-K8S-180    | TC-I037                             | Covered |
 | REQ-K8S-190    | TC-I038                             | Covered |
