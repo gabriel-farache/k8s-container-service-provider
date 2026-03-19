@@ -1142,7 +1142,7 @@ integration, provider capability updates post-registration.
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
 | REQ-REG-010 | The SP MUST register with DCM on startup via `POST {dcm.registrationUrl}/providers` | MUST | |
-| REQ-REG-020 | The registration payload MUST include `name`, `service_type`, `endpoint`, `operations`, and optionally `display_name`, `metadata.region_code`/`metadata.zone` | MUST | |
+| REQ-REG-020 | The registration payload MUST include `name`, `service_type`, `endpoint`, `operations`, `schema_version`, and optionally `display_name`, `metadata.region_code`/`metadata.zone` | MUST | |
 | REQ-REG-030 | Registration MUST execute asynchronously | MUST | |
 | REQ-REG-031 | Registration MUST NOT block server startup | MUST | |
 | REQ-REG-040 | Registration MUST retry with exponential backoff on failure with a maximum backoff interval. Non-retryable errors (4xx client errors) MUST stop retries immediately without further attempts | MUST | |
@@ -1179,6 +1179,7 @@ integration, provider capability updates post-registration.
 - **Then** it MUST include:
   - `name`: configured provider name
   - `service_type`: `"container"`
+  - `schema_version`: `"v1alpha1"`
   - `display_name`: configured display name (if set)
   - `endpoint`: `{provider.endpoint}/api/v1alpha1/containers`
   - `operations`: `["CREATE", "DELETE", "READ"]`

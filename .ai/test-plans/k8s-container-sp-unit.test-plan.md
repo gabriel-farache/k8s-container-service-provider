@@ -801,6 +801,7 @@ dedicated test class or `Describe` block.
 - **Then:**
   - `name` is `"k8s-sp"`
   - `service_type` is `"container"`
+  - `schema_version` is `"v1alpha1"`
   - `display_name` is `"K8s Container SP"`
   - `endpoint` is `"https://sp.example.com/api/v1alpha1/containers"`
   - `operations` contains `["CREATE", "DELETE", "READ"]`

@@ -985,6 +985,7 @@ for full descriptions.
 - **Then:** Request body contains:
   - `name: "k8s-sp"`
   - `service_type: "container"`
+  - `schema_version: "v1alpha1"`
   - `display_name: "K8s SP"`
   - `endpoint: "https://sp.example.com/api/v1alpha1/containers"`
   - `operations: ["CREATE", "DELETE", "READ"]`
