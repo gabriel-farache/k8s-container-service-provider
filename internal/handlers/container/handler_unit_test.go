@@ -86,7 +86,7 @@ var _ = Describe("Container API Handlers", func() {
 				}
 
 				req := oapigen.CreateContainerRequestObject{
-					Body: &body,
+					Body: &v1alpha1.CreateContainerRequest{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -115,7 +115,7 @@ var _ = Describe("Container API Handlers", func() {
 				}
 
 				req := oapigen.CreateContainerRequestObject{
-					Body: &body,
+					Body: &v1alpha1.CreateContainerRequest{Spec: body},
 					// Params.Id is nil — no client-specified ID
 				}
 
@@ -139,7 +139,7 @@ var _ = Describe("Container API Handlers", func() {
 
 				req := oapigen.CreateContainerRequestObject{
 					Params: v1alpha1.CreateContainerParams{Id: util.Ptr(clientID)},
-					Body:   &body,
+					Body:   &v1alpha1.CreateContainerRequest{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -148,6 +148,48 @@ var _ = Describe("Container API Handlers", func() {
 				_, ok := resp.(oapigen.CreateContainer201JSONResponse)
 				Expect(ok).To(BeTrue(), "expected CreateContainer201JSONResponse")
 				Expect(capturedID).To(Equal(clientID))
+			})
+
+			// TC-U079: spec wrapper is unwrapped before passing to store
+			It("unwraps spec envelope before calling store (TC-U079)", func() {
+				body := validCreateBody()
+				var capturedContainer v1alpha1.Container
+				repo.CreateFunc = func(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
+					capturedContainer = c
+					return newContainerResult(c, id), nil
+				}
+
+				req := oapigen.CreateContainerRequestObject{
+					Body: &v1alpha1.CreateContainerRequest{Spec: body},
+				}
+
+				resp, err := h.CreateContainer(context.Background(), req)
+				Expect(err).NotTo(HaveOccurred())
+
+				_, ok := resp.(oapigen.CreateContainer201JSONResponse)
+				Expect(ok).To(BeTrue(), "expected CreateContainer201JSONResponse")
+				Expect(capturedContainer.Metadata.Name).To(Equal(body.Metadata.Name))
+				Expect(capturedContainer.Image.Reference).To(Equal(body.Image.Reference))
+			})
+
+			// TC-U081: provider_hints are accepted without error
+			It("accepts provider_hints in container spec (TC-U081)", func() {
+				body := validCreateBody()
+				hints := map[string]interface{}{"gpu": true, "zone": "us-east-1"}
+				body.ProviderHints = &hints
+				repo.CreateFunc = func(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
+					return newContainerResult(c, id), nil
+				}
+
+				req := oapigen.CreateContainerRequestObject{
+					Body: &v1alpha1.CreateContainerRequest{Spec: body},
+				}
+
+				resp, err := h.CreateContainer(context.Background(), req)
+				Expect(err).NotTo(HaveOccurred())
+
+				_, ok := resp.(oapigen.CreateContainer201JSONResponse)
+				Expect(ok).To(BeTrue(), "expected CreateContainer201JSONResponse")
 			})
 		})
 
@@ -160,7 +202,7 @@ var _ = Describe("Container API Handlers", func() {
 				}
 
 				req := oapigen.CreateContainerRequestObject{
-					Body: &body,
+					Body: &v1alpha1.CreateContainerRequest{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -181,7 +223,7 @@ var _ = Describe("Container API Handlers", func() {
 
 				req := oapigen.CreateContainerRequestObject{
 					Params: v1alpha1.CreateContainerParams{Id: util.Ptr(clientID)},
-					Body:   &body,
+					Body:   &v1alpha1.CreateContainerRequest{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -207,7 +249,7 @@ var _ = Describe("Container API Handlers", func() {
 				}
 
 				req := oapigen.CreateContainerRequestObject{
-					Body: &body,
+					Body: &v1alpha1.CreateContainerRequest{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -230,7 +272,7 @@ var _ = Describe("Container API Handlers", func() {
 					mutate(&body)
 
 					req := oapigen.CreateContainerRequestObject{
-						Body: &body,
+						Body: &v1alpha1.CreateContainerRequest{Spec: body},
 					}
 
 					resp, err := h.CreateContainer(context.Background(), req)
@@ -258,7 +300,7 @@ var _ = Describe("Container API Handlers", func() {
 					body.Resources.Memory.Max = memMax
 
 					req := oapigen.CreateContainerRequestObject{
-						Body: &body,
+						Body: &v1alpha1.CreateContainerRequest{Spec: body},
 					}
 
 					resp, err := h.CreateContainer(context.Background(), req)
@@ -280,7 +322,7 @@ var _ = Describe("Container API Handlers", func() {
 
 				req := oapigen.CreateContainerRequestObject{
 					Params: v1alpha1.CreateContainerParams{Id: util.Ptr(clientID)},
-					Body:   &body,
+					Body:   &v1alpha1.CreateContainerRequest{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -299,7 +341,7 @@ var _ = Describe("Container API Handlers", func() {
 					body.Metadata.Labels = &map[string]string{label: "user-value"}
 
 					req := oapigen.CreateContainerRequestObject{
-						Body: &body,
+						Body: &v1alpha1.CreateContainerRequest{Spec: body},
 					}
 
 					resp, err := h.CreateContainer(context.Background(), req)
@@ -522,7 +564,7 @@ var _ = Describe("Container API Handlers", func() {
 				},
 				func(s oapigen.StrictServerInterface) (interface{}, error) {
 					body := validCreateBody()
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &body})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
 				},
 				"/api/v1alpha1/containers",
 				func(resp interface{}, expected string) {
@@ -597,7 +639,7 @@ var _ = Describe("Container API Handlers", func() {
 				},
 				func(s oapigen.StrictServerInterface) (interface{}, error) {
 					body := validCreateBody()
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &body})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
 				},
 				"/api/v1alpha1/containers",
 				func(resp interface{}, expected string) {
@@ -648,7 +690,7 @@ var _ = Describe("Container API Handlers", func() {
 					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
 						return nil, &store.ConflictError{Message: "dup"}
 					}
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &body})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
 				},
 				func(resp interface{}) {
 					errResp, ok := resp.(oapigen.CreateContainer409ApplicationProblemPlusJSONResponse)
@@ -681,7 +723,7 @@ var _ = Describe("Container API Handlers", func() {
 					body.Resources.Cpu.Min = 4
 					body.Resources.Cpu.Max = 2
 					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{
-						Body: &body,
+						Body: &v1alpha1.CreateContainerRequest{Spec: body},
 					})
 				},
 				func(resp interface{}) {
@@ -730,7 +772,7 @@ var _ = Describe("Container API Handlers", func() {
 					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
 						return nil, &store.ConflictError{Message: "dup"}
 					}
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &body})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
 				},
 				oapigen.CreateContainer409ApplicationProblemPlusJSONResponse{},
 			),
@@ -741,7 +783,7 @@ var _ = Describe("Container API Handlers", func() {
 					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
 						return nil, &store.InvalidArgumentError{Message: "service creation requires at least one port"}
 					}
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &body})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
 				},
 				oapigen.CreateContainer400ApplicationProblemPlusJSONResponse{},
 			),
@@ -764,7 +806,7 @@ var _ = Describe("Container API Handlers", func() {
 					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
 						return nil, errors.New("unexpected")
 					}
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &body})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
 				},
 				oapigen.CreateContainer500ApplicationProblemPlusJSONResponse{},
 			),
@@ -821,7 +863,7 @@ var _ = Describe("Container API Handlers", func() {
 				},
 				func(s oapigen.StrictServerInterface) (interface{}, error) {
 					body := validCreateBody()
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &body})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
 				},
 				func(resp interface{}) {
 					errResp, ok := resp.(oapigen.CreateContainer500ApplicationProblemPlusJSONResponse)

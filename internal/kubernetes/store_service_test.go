@@ -154,7 +154,7 @@ var _ = Describe("K8s Store", func() {
 				{ContainerPort: 8080, Visibility: v1alpha1.Internal},
 				{ContainerPort: 9090, Visibility: v1alpha1.None},
 			}
-			c.Network = &v1alpha1.ContainerNetwork{Ports: ports}
+			c.Network = &v1alpha1.ContainerNetwork{Ports: &ports}
 
 			_, err := s.Create(context.Background(), c, "test-id-091")
 			Expect(err).NotTo(HaveOccurred())
@@ -175,7 +175,7 @@ var _ = Describe("K8s Store", func() {
 				{ContainerPort: 8080, Visibility: v1alpha1.Internal},
 				{ContainerPort: 9090, Visibility: v1alpha1.External},
 			}
-			c.Network = &v1alpha1.ContainerNetwork{Ports: ports}
+			c.Network = &v1alpha1.ContainerNetwork{Ports: &ports}
 
 			_, err := s.Create(context.Background(), c, "test-id-092")
 			Expect(err).NotTo(HaveOccurred())
@@ -202,7 +202,7 @@ var _ = Describe("K8s Store", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(got.Network).NotTo(BeNil())
 			Expect(got.Network.Ports).NotTo(BeNil())
-			ports := got.Network.Ports
+			ports := *got.Network.Ports
 			Expect(ports).To(HaveLen(1))
 			Expect(ports[0].Visibility).To(Equal(v1alpha1.Internal))
 		})
@@ -225,7 +225,7 @@ var _ = Describe("K8s Store", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(got.Network).NotTo(BeNil())
 			Expect(got.Network.Ports).NotTo(BeNil())
-			ports := got.Network.Ports
+			ports := *got.Network.Ports
 			Expect(ports).To(HaveLen(1))
 			Expect(ports[0].Visibility).To(Equal(v1alpha1.External))
 		})
@@ -246,9 +246,50 @@ var _ = Describe("K8s Store", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(got.Network).NotTo(BeNil())
 			Expect(got.Network.Ports).NotTo(BeNil())
-			ports := got.Network.Ports
+			ports := *got.Network.Ports
 			Expect(ports).To(HaveLen(1))
 			Expect(ports[0].Visibility).To(Equal(v1alpha1.None))
+		})
+
+		// TC-I111: Network without ports creates no Service
+		It("creates Deployment but no Service when network has no ports (TC-I111)", func() {
+			s, client := newTestStore(defaultConfig())
+			c := minimalContainer("my-app")
+			c.Network = &v1alpha1.ContainerNetwork{} // network present, ports absent
+
+			_, err := s.Create(context.Background(), c, "test-id-111")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Deployment must be created
+			_, deployErr := client.AppsV1().Deployments("default").Get(context.Background(), "my-app", metav1.GetOptions{})
+			Expect(deployErr).NotTo(HaveOccurred())
+
+			// No Service should exist
+			svcs, svcErr := client.CoreV1().Services("default").List(context.Background(), metav1.ListOptions{})
+			Expect(svcErr).NotTo(HaveOccurred())
+			Expect(svcs.Items).To(BeEmpty())
+		})
+
+		// TC-I112: Provider hints do not affect K8s resources
+		It("creates identical resources with or without provider_hints (TC-I112)", func() {
+			s, client := newTestStore(defaultConfig())
+			c := containerWithVisiblePorts(v1alpha1.Internal, 8080)
+			hints := map[string]interface{}{"gpu": true, "zone": "us-east-1"}
+			c.ProviderHints = &hints
+
+			_, err := s.Create(context.Background(), c, "test-id-112")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Deployment should be created normally
+			deploy, deployErr := client.AppsV1().Deployments("default").Get(context.Background(), "my-app", metav1.GetOptions{})
+			Expect(deployErr).NotTo(HaveOccurred())
+			Expect(deploy.Spec.Template.Spec.Containers).To(HaveLen(1))
+			Expect(deploy.Spec.Template.Spec.Containers[0].Image).To(Equal("nginx:latest"))
+
+			// Service should be created normally
+			svc, svcErr := client.CoreV1().Services("default").Get(context.Background(), "my-app", metav1.GetOptions{})
+			Expect(svcErr).NotTo(HaveOccurred())
+			Expect(svc.Spec.Ports).To(HaveLen(1))
 		})
 	})
 })

@@ -124,7 +124,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Container'
+              $ref: '#/components/schemas/CreateContainerRequest'
       responses:
         '201':
           description: Container created successfully
@@ -435,8 +435,6 @@ components:
       type: object
       description: Network configuration
       additionalProperties: true
-      required:
-        - ports
       properties:
         ip:
           type: string
@@ -512,6 +510,10 @@ components:
           $ref: '#/components/schemas/ContainerProcess'
         network:
           $ref: '#/components/schemas/ContainerNetwork'
+        provider_hints:
+          type: object
+          description: Optional provider-specific hints from the catalog (accepted, not acted upon)
+          additionalProperties: true
         status:
           readOnly: true
           allOf:
@@ -614,3 +616,14 @@ components:
           type: string
           format: uri-reference
           description: Unique identifier for this error occurrence
+
+    CreateContainerRequest:
+      type: object
+      description: >
+        Wrapper for container creation requests. The SPRM wraps the catalog
+        container spec in a "spec" envelope before forwarding to service providers.
+      required:
+        - spec
+      properties:
+        spec:
+          $ref: '#/components/schemas/Container'

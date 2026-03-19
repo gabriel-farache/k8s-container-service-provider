@@ -15,11 +15,11 @@ import (
 // portsWithVisibility returns the subset of ports whose visibility is not "none".
 // Returns nil if no qualifying ports exist.
 func portsWithVisibility(container v1alpha1.Container) []v1alpha1.ContainerPort {
-	if container.Network == nil || len(container.Network.Ports) == 0 {
+	if container.Network == nil || container.Network.Ports == nil || len(*container.Network.Ports) == 0 {
 		return nil
 	}
 	var result []v1alpha1.ContainerPort
-	for _, p := range container.Network.Ports {
+	for _, p := range *container.Network.Ports {
 		if p.Visibility != v1alpha1.None {
 			result = append(result, p)
 		}

@@ -71,6 +71,9 @@ type Container struct {
 	// Process Container process configuration
 	Process *ContainerProcess `json:"process,omitempty"`
 
+	// ProviderHints Optional provider-specific hints from the catalog (accepted, not acted upon)
+	ProviderHints *map[string]interface{} `json:"provider_hints,omitempty"`
+
 	// Resources CPU and memory resource constraints
 	Resources ContainerResources `json:"resources"`
 	Service   *ServiceInfo       `json:"service,omitempty"`
@@ -150,7 +153,7 @@ type ContainerNetwork struct {
 	Ip *string `json:"ip,omitempty"`
 
 	// Ports Container ports to expose
-	Ports                []ContainerPort        `json:"ports"`
+	Ports                *[]ContainerPort       `json:"ports,omitempty"`
 	AdditionalProperties map[string]interface{} `json:"-"`
 }
 
@@ -202,6 +205,12 @@ type ContainerResources struct {
 
 // ContainerStatus Current status of the container instance
 type ContainerStatus string
+
+// CreateContainerRequest Wrapper for container creation requests. The SPRM wraps the catalog container spec in a "spec" envelope before forwarding to service providers.
+type CreateContainerRequest struct {
+	// Spec Container resource representing a container instance
+	Spec Container `json:"spec"`
+}
 
 // Error RFC 7807 compliant error response
 type Error struct {
@@ -298,7 +307,7 @@ type CreateContainerParams struct {
 }
 
 // CreateContainerJSONRequestBody defines body for CreateContainer for application/json ContentType.
-type CreateContainerJSONRequestBody = Container
+type CreateContainerJSONRequestBody = CreateContainerRequest
 
 // Getter for additional properties for ContainerCpu. Returns the specified
 // element and whether it was found
