@@ -312,7 +312,7 @@ size limits.
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
 | REQ-API-010 | The SP MUST implement all API operations defined in the OpenAPI specification | MUST | |
-| REQ-API-020 | POST `/api/v1alpha1/containers` MUST create a container and return 201 Created with read-only fields populated | MUST | |
+| REQ-API-020 | POST `/api/v1alpha1/containers` MUST accept a `CreateContainerRequest` wrapper (with `spec` field) and return 201 Created with read-only fields populated as a bare Container | MUST | REQ-API-200 |
 | REQ-API-030 | When no `id` query parameter is provided, the server MUST generate a UUID for the container | MUST | |
 | REQ-API-040 | When an `id` query parameter is provided, the server MUST use it as the container ID | MUST | |
 | REQ-API-050 | Client-specified IDs MUST be validated against AEP-122 pattern `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$` | MUST | |
@@ -330,6 +330,8 @@ size limits.
 | REQ-API-160 | DELETE MUST return 404 Not Found with RFC 7807 error body when the container does not exist | MUST | |
 | REQ-API-170 | All error responses MUST conform to RFC 7807 with `Content-Type: application/problem+json` and at minimum `type` and `title` fields | MUST | |
 | REQ-API-180 | Error types MUST map to appropriate HTTP status codes per the error mapping table | MUST | |
+| REQ-API-200 | The POST `/api/v1alpha1/containers` request body MUST be a JSON object with a required `spec` property containing the Container input fields (CreateContainerRequest wrapper). The response remains a bare Container | MUST | D1 |
+| REQ-API-210 | The Container schema MUST include an optional `provider_hints` field (type: object, additionalProperties: true). The SP MUST accept it on input but MUST NOT act on hint content | MUST | D3, DD-080 |
 
 **Error type mapping (REQ-API-180):**
 
@@ -470,6 +472,27 @@ size limits.
 - **Then** the response MUST have `Content-Type: application/problem+json`
 - **And** the body MUST contain at minimum `type` and `title` fields
 
+##### AC-API-200: Request body envelope accepted
+
+- **Validates:** REQ-API-200
+- **Given** POST body `{"spec": {<valid-container-fields>}}`
+- **When** the request is processed
+- **Then** 201 with bare Container response (no wrapper)
+
+##### AC-API-210: Raw Container body rejected
+
+- **Validates:** REQ-API-200
+- **Given** POST body is a raw Container (no `spec` wrapper)
+- **When** OpenAPI validation is applied
+- **Then** 400 INVALID_ARGUMENT
+
+##### AC-API-220: Provider hints accepted and passthrough
+
+- **Validates:** REQ-API-210
+- **Given** Create request with `"provider_hints": {"placement": "gpu-node"}`
+- **When** Container is created
+- **Then** 201, hints do not affect K8s resource creation
+
 #### Dependencies
 
 Depends on Topic 1 (HTTP Server) and Topic 4 (Kubernetes Integration & Store).
@@ -522,6 +545,7 @@ topic 5).
 | REQ-K8S-120 | When all non-none ports have `visibility=internal`, the Service type MUST be ClusterIP | MUST | |
 | REQ-K8S-125 | When any port has `visibility=external`, the Service type MUST be the configured `defaultServiceType` | MUST | |
 | REQ-K8S-150 | When all ports have `visibility=none` (or no ports exist), no Service MUST be created | MUST | |
+| REQ-K8S-155 | When `network` is provided but `ports` is absent or null, the SP MUST treat it identically to having no ports — no Service is created and no error is returned | MUST | D2 |
 | REQ-K8S-170 | The SP MUST return a conflict error if a Deployment with the same `metadata.name` already exists in the configured namespace | MUST | SC-001 |
 | REQ-K8S-180 | Delete MUST remove the Deployment (cascading to Pods) and associated Service | MUST | |
 | REQ-K8S-190 | Delete MUST succeed even if no Service exists for the container | MUST | |
@@ -751,6 +775,13 @@ topic 5).
 - **Given** all ports have `visibility=none` (or no ports exist)
 - **When** the container is created
 - **Then** no Service MUST be created
+
+##### AC-K8S-152: Network without ports produces no Service
+
+- **Validates:** REQ-K8S-155
+- **Given** Container with `"network": {}` (ports absent)
+- **When** Create is called
+- **Then** Container created successfully, no Service created
 
 ##### AC-K8S-155: Visibility inference on GET - internal
 
@@ -1576,12 +1607,14 @@ However, if any user-specified label key collides with a DCM-reserved label
 (`managed-by`, `dcm-instance-id`, `dcm-service-type`), the Create request MUST
 be rejected with 400 Bad Request.
 
-### SC-005: Empty `network.ports: []`
+### SC-005: Empty or absent `network.ports`
 
-**Related requirements:** REQ-K8S-100, REQ-K8S-150
+**Related requirements:** REQ-K8S-100, REQ-K8S-150, REQ-K8S-155
 
 An explicit empty array `network.ports: []` MUST be treated identically to the
-field being absent. No Service is created when there are no ports.
+field being absent. A `network: {}` object with no `ports` key MUST also be
+treated identically — no Service is created and no error is returned. No Service
+is created when there are no ports.
 
 ### SC-006: Invalid `page_token`
 
@@ -1608,9 +1641,9 @@ conditions (unless ReplicaFailure=True or Replicas=0, which map to FAILED).
 |--------|-------|-------|
 | REQ-HTTP-NNN | 4.1: HTTP Server | 11 |
 | REQ-HLT-NNN | 4.2: Health Service | 4 |
-| REQ-API-NNN | 4.3: Container API Handlers | 19 |
+| REQ-API-NNN | 4.3: Container API Handlers | 21 |
 | REQ-STR-NNN | 4.4: Store Interface | 8 |
-| REQ-K8S-NNN | 4.4: Kubernetes Integration | 28 |
+| REQ-K8S-NNN | 4.4: Kubernetes Integration | 29 |
 | REQ-MON-NNN | 4.5: Status Monitoring | 21 |
 | REQ-REG-NNN | 4.6: DCM Registration | 9 |
 | REQ-XC-ID-NNN | 5.1: Resource Identity | 2 |
@@ -1618,4 +1651,4 @@ conditions (unless ReplicaFailure=True or Replicas=0, which map to FAILED).
 | REQ-XC-ERR-NNN | 5.3: Error Handling | 4 |
 | REQ-XC-LOG-NNN | 5.4: Logging | 2 |
 | REQ-XC-CFG-NNN | 5.5: Configuration Management | 2 |
-| **Total** | | **111** |
+| **Total** | | **114** |
