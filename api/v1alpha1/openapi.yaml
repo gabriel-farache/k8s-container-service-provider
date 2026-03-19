@@ -124,7 +124,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateContainerRequest'
+              $ref: '#/components/schemas/Container'
       responses:
         '201':
           description: Container created successfully
@@ -478,10 +478,7 @@ components:
         patterns:
           - containers/{container_id}
       required:
-        - service_type
-        - metadata
-        - image
-        - resources
+        - spec
       properties:
         id:
           type: string
@@ -496,24 +493,8 @@ components:
           readOnly: true
           description: Resource path identifier
           example: "containers/my-nginx-container"
-        service_type:
-          type: string
-          description: Service type identifier (must be "container")
-          enum: [container]
-        metadata:
-          $ref: '#/components/schemas/ContainerMetadata'
-        image:
-          $ref: '#/components/schemas/ContainerImage'
-        resources:
-          $ref: '#/components/schemas/ContainerResources'
-        process:
-          $ref: '#/components/schemas/ContainerProcess'
-        network:
-          $ref: '#/components/schemas/ContainerNetwork'
-        provider_hints:
-          type: object
-          description: Optional provider-specific hints from the catalog (accepted, not acted upon)
-          additionalProperties: true
+        spec:
+          $ref: '#/components/schemas/ContainerSpec'
         status:
           readOnly: true
           allOf:
@@ -532,6 +513,34 @@ components:
           format: date-time
           readOnly: true
           description: Timestamp when the container was last updated
+
+    ContainerSpec:
+      type: object
+      description: Container specification with input fields for creating a container
+      required:
+        - service_type
+        - metadata
+        - image
+        - resources
+      properties:
+        service_type:
+          type: string
+          description: Service type identifier (must be "container")
+          enum: [container]
+        metadata:
+          $ref: '#/components/schemas/ContainerMetadata'
+        image:
+          $ref: '#/components/schemas/ContainerImage'
+        resources:
+          $ref: '#/components/schemas/ContainerResources'
+        process:
+          $ref: '#/components/schemas/ContainerProcess'
+        network:
+          $ref: '#/components/schemas/ContainerNetwork'
+        provider_hints:
+          type: object
+          description: Optional provider-specific hints from the catalog (accepted, not acted upon)
+          additionalProperties: true
 
     ServicePort:
       type: object
@@ -617,13 +626,3 @@ components:
           format: uri-reference
           description: Unique identifier for this error occurrence
 
-    CreateContainerRequest:
-      type: object
-      description: >
-        Wrapper for container creation requests. The SPRM wraps the catalog
-        container spec in a "spec" envelope before forwarding to service providers.
-      required:
-        - spec
-      properties:
-        spec:
-          $ref: '#/components/schemas/Container'

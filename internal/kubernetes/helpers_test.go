@@ -38,9 +38,9 @@ func defaultConfig() k8sstore.K8sConfig {
 }
 
 // minimalContainer creates a container with only the required fields set.
-func minimalContainer(name string) v1alpha1.Container {
-	return v1alpha1.Container{
-		ServiceType: v1alpha1.ContainerServiceTypeContainer,
+func minimalContainer(name string) v1alpha1.ContainerSpec {
+	return v1alpha1.ContainerSpec{
+		ServiceType: v1alpha1.ContainerSpecServiceTypeContainer,
 		Metadata: v1alpha1.ContainerMetadata{
 			Name: name,
 		},
@@ -61,7 +61,7 @@ func minimalContainer(name string) v1alpha1.Container {
 }
 
 // containerWithPorts creates a container with the specified network ports (visibility=none).
-func containerWithPorts(name string, ports ...int) v1alpha1.Container {
+func containerWithPorts(name string, ports ...int) v1alpha1.ContainerSpec {
 	c := minimalContainer(name)
 	containerPorts := make([]v1alpha1.ContainerPort, len(ports))
 	for i, p := range ports {
@@ -77,7 +77,7 @@ func containerWithPorts(name string, ports ...int) v1alpha1.Container {
 }
 
 // containerWithVisiblePorts creates a container where all ports share the given visibility.
-func containerWithVisiblePorts(visibility v1alpha1.ContainerPortVisibility, ports ...int) v1alpha1.Container {
+func containerWithVisiblePorts(visibility v1alpha1.ContainerPortVisibility, ports ...int) v1alpha1.ContainerSpec {
 	c := minimalContainer("my-app")
 	containerPorts := make([]v1alpha1.ContainerPort, len(ports))
 	for i, p := range ports {

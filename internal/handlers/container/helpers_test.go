@@ -30,17 +30,17 @@ var _ store.ContainerRepository = (*mockContainerRepository)(nil)
 // Each method delegates to a configurable function field. Unconfigured methods
 // panic so that unexpected calls are immediately visible.
 type mockContainerRepository struct {
-	CreateFunc func(ctx context.Context, container v1alpha1.Container, id string) (*v1alpha1.Container, error)
+	CreateFunc func(ctx context.Context, spec v1alpha1.ContainerSpec, id string) (*v1alpha1.Container, error)
 	GetFunc    func(ctx context.Context, containerID string) (*v1alpha1.Container, error)
 	ListFunc   func(ctx context.Context, maxPageSize int32, pageToken string) (*v1alpha1.ContainerList, error)
 	DeleteFunc func(ctx context.Context, containerID string) error
 }
 
-func (m *mockContainerRepository) Create(ctx context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
+func (m *mockContainerRepository) Create(ctx context.Context, spec v1alpha1.ContainerSpec, id string) (*v1alpha1.Container, error) {
 	if m.CreateFunc == nil {
 		panic("unexpected call to Create")
 	}
-	return m.CreateFunc(ctx, c, id)
+	return m.CreateFunc(ctx, spec, id)
 }
 
 func (m *mockContainerRepository) Get(ctx context.Context, containerID string) (*v1alpha1.Container, error) {
@@ -68,11 +68,11 @@ func (m *mockContainerRepository) Delete(ctx context.Context, containerID string
 // Test data helpers
 // ---------------------------------------------------------------------------
 
-// validCreateBody returns a Container with all required fields populated,
+// validCreateBody returns a ContainerSpec with all required fields populated,
 // suitable for use as a CreateContainer request body.
-func validCreateBody() v1alpha1.Container {
-	return v1alpha1.Container{
-		ServiceType: v1alpha1.ContainerServiceTypeContainer,
+func validCreateBody() v1alpha1.ContainerSpec {
+	return v1alpha1.ContainerSpec{
+		ServiceType: v1alpha1.ContainerSpecServiceTypeContainer,
 		Metadata: v1alpha1.ContainerMetadata{
 			Name: "my-container",
 		},
@@ -95,18 +95,20 @@ func validCreateBody() v1alpha1.Container {
 // newContainerResult simulates the enriched output the store returns after a
 // successful Create. Read-only fields (id, path, status, timestamps, namespace)
 // are populated as the real store would set them.
-func newContainerResult(c v1alpha1.Container, id string) *v1alpha1.Container {
+func newContainerResult(spec v1alpha1.ContainerSpec, id string) *v1alpha1.Container {
 	now := time.Now().UTC()
 	status := v1alpha1.PENDING
 	path := "containers/" + id
 	ns := testNamespace
 
-	result := c
-	result.Id = &id
-	result.Path = &path
-	result.Status = &status
-	result.CreateTime = &now
-	result.UpdateTime = &now
-	result.Metadata.Namespace = &ns
-	return &result
+	spec.Metadata.Namespace = &ns
+
+	return &v1alpha1.Container{
+		Id:         &id,
+		Path:       &path,
+		Status:     &status,
+		CreateTime: &now,
+		UpdateTime: &now,
+		Spec:       spec,
+	}
 }

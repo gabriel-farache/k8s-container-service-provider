@@ -25,19 +25,20 @@ import (
 // Only Create is implemented; other methods panic if called unexpectedly.
 type stubContainerRepository struct{}
 
-func (s *stubContainerRepository) Create(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
+func (s *stubContainerRepository) Create(_ context.Context, spec v1alpha1.ContainerSpec, id string) (*v1alpha1.Container, error) {
 	now := time.Now().UTC()
 	status := v1alpha1.PENDING
 	path := "containers/" + id
-	result := c
-	result.Id = &id
-	result.Path = &path
-	result.Status = &status
-	result.CreateTime = &now
-	result.UpdateTime = &now
 	ns := "default"
-	result.Metadata.Namespace = &ns
-	return &result, nil
+	spec.Metadata.Namespace = &ns
+	return &v1alpha1.Container{
+		Id:         &id,
+		Path:       &path,
+		Status:     &status,
+		CreateTime: &now,
+		UpdateTime: &now,
+		Spec:       spec,
+	}, nil
 }
 
 func (s *stubContainerRepository) Get(_ context.Context, _ string) (*v1alpha1.Container, error) {
@@ -347,9 +348,12 @@ var _ = Describe("Container API Handlers - Request Validation", func() {
 
 		var result map[string]any
 		Expect(json.Unmarshal(respBody, &result)).To(Succeed())
-		Expect(result["service_type"]).To(Equal("container"))
-		Expect(result).To(HaveKey("metadata"))
-		meta, ok := result["metadata"].(map[string]any)
+		Expect(result).To(HaveKey("spec"))
+		spec, ok := result["spec"].(map[string]any)
+		Expect(ok).To(BeTrue(), "spec should be an object")
+		Expect(spec["service_type"]).To(Equal("container"))
+		Expect(spec).To(HaveKey("metadata"))
+		meta, ok := spec["metadata"].(map[string]any)
 		Expect(ok).To(BeTrue(), "metadata should be an object")
 		Expect(meta["name"]).To(Equal("test"))
 	})

@@ -200,9 +200,9 @@ var _ = Describe("K8s Store", func() {
 
 			got, err := s.Get(context.Background(), *created.Id)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(got.Network).NotTo(BeNil())
-			Expect(got.Network.Ports).NotTo(BeNil())
-			ports := *got.Network.Ports
+			Expect(got.Spec.Network).NotTo(BeNil())
+			Expect(got.Spec.Network.Ports).NotTo(BeNil())
+			ports := *got.Spec.Network.Ports
 			Expect(ports).To(HaveLen(1))
 			Expect(ports[0].Visibility).To(Equal(v1alpha1.Internal))
 		})
@@ -223,9 +223,9 @@ var _ = Describe("K8s Store", func() {
 
 			got, err := s.Get(context.Background(), *created.Id)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(got.Network).NotTo(BeNil())
-			Expect(got.Network.Ports).NotTo(BeNil())
-			ports := *got.Network.Ports
+			Expect(got.Spec.Network).NotTo(BeNil())
+			Expect(got.Spec.Network.Ports).NotTo(BeNil())
+			ports := *got.Spec.Network.Ports
 			Expect(ports).To(HaveLen(1))
 			Expect(ports[0].Visibility).To(Equal(v1alpha1.External))
 		})
@@ -244,9 +244,9 @@ var _ = Describe("K8s Store", func() {
 
 			got, err := s.Get(context.Background(), *created.Id)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(got.Network).NotTo(BeNil())
-			Expect(got.Network.Ports).NotTo(BeNil())
-			ports := *got.Network.Ports
+			Expect(got.Spec.Network).NotTo(BeNil())
+			Expect(got.Spec.Network.Ports).NotTo(BeNil())
+			ports := *got.Spec.Network.Ports
 			Expect(ports).To(HaveLen(1))
 			Expect(ports[0].Visibility).To(Equal(v1alpha1.None))
 		})

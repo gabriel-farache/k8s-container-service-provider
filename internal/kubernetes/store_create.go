@@ -14,12 +14,12 @@ import (
 
 // portsWithVisibility returns the subset of ports whose visibility is not "none".
 // Returns nil if no qualifying ports exist.
-func portsWithVisibility(container v1alpha1.Container) []v1alpha1.ContainerPort {
-	if container.Network == nil || container.Network.Ports == nil || len(*container.Network.Ports) == 0 {
+func portsWithVisibility(spec v1alpha1.ContainerSpec) []v1alpha1.ContainerPort {
+	if spec.Network == nil || spec.Network.Ports == nil || len(*spec.Network.Ports) == 0 {
 		return nil
 	}
 	var result []v1alpha1.ContainerPort
-	for _, p := range *container.Network.Ports {
+	for _, p := range *spec.Network.Ports {
 		if p.Visibility != v1alpha1.None {
 			result = append(result, p)
 		}
@@ -48,10 +48,10 @@ func resolveServiceType(cfg K8sConfig, ports []v1alpha1.ContainerPort) corev1.Se
 
 // Create creates a new container backed by a Kubernetes Deployment (and
 // optionally a Service when ports have non-none visibility).
-func (s *K8sContainerStore) Create(ctx context.Context, container v1alpha1.Container, id string) (*v1alpha1.Container, error) {
+func (s *K8sContainerStore) Create(ctx context.Context, spec v1alpha1.ContainerSpec, id string) (*v1alpha1.Container, error) {
 	labels := dcmLabels(id)
-	if container.Metadata.Labels != nil {
-		labels = mergeLabels(labels, *container.Metadata.Labels)
+	if spec.Metadata.Labels != nil {
+		labels = mergeLabels(labels, *spec.Metadata.Labels)
 	}
 
 	// Check for duplicate dcm-instance-id.
@@ -66,14 +66,14 @@ func (s *K8sContainerStore) Create(ctx context.Context, container v1alpha1.Conta
 	}
 
 	// Determine which ports need a Service (visibility != none).
-	servicePorts := portsWithVisibility(container)
+	servicePorts := portsWithVisibility(spec)
 
 	// Create Deployment.
-	deploy := buildDeployment(container, id, s.cfg, labels)
+	deploy := buildDeployment(spec, id, s.cfg, labels)
 	_, err = s.client.AppsV1().Deployments(s.cfg.Namespace).Create(ctx, deploy, metav1.CreateOptions{})
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			return nil, &store.ConflictError{Message: fmt.Sprintf("deployment %q already exists", container.Metadata.Name)}
+			return nil, &store.ConflictError{Message: fmt.Sprintf("deployment %q already exists", spec.Metadata.Name)}
 		}
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (s *K8sContainerStore) Create(ctx context.Context, container v1alpha1.Conta
 	// Create Service if any ports have non-none visibility.
 	if len(servicePorts) > 0 {
 		svcType := resolveServiceType(s.cfg, servicePorts)
-		svc := buildService(container, id, s.cfg, labels, svcType, servicePorts)
+		svc := buildService(spec, id, s.cfg, labels, svcType, servicePorts)
 		_, err = s.client.CoreV1().Services(s.cfg.Namespace).Create(ctx, svc, metav1.CreateOptions{})
 		if err != nil {
 			// Rollback: delete the just-created Deployment.
@@ -102,22 +102,23 @@ func (s *K8sContainerStore) Create(ctx context.Context, container v1alpha1.Conta
 		}
 	}
 
-	return newContainerResult(container, id, s.cfg.Namespace), nil
+	return newContainerResult(spec, id, s.cfg.Namespace), nil
 }
 
-// newContainerResult stamps server-assigned fields onto a user-provided container.
-func newContainerResult(container v1alpha1.Container, id, namespace string) *v1alpha1.Container {
+// newContainerResult stamps server-assigned fields onto a user-provided spec.
+func newContainerResult(spec v1alpha1.ContainerSpec, id, namespace string) *v1alpha1.Container {
 	now := time.Now()
 	status := v1alpha1.PENDING
 	path := fmt.Sprintf("containers/%s", id)
 
-	result := container
-	result.Id = &id
-	result.Path = &path
-	result.Status = &status
-	result.CreateTime = &now
-	result.UpdateTime = &now
-	result.Metadata.Namespace = &namespace
+	spec.Metadata.Namespace = &namespace
 
-	return &result
+	return &v1alpha1.Container{
+		Id:         &id,
+		Path:       &path,
+		Status:     &status,
+		CreateTime: &now,
+		UpdateTime: &now,
+		Spec:       spec,
+	}
 }

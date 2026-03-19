@@ -94,17 +94,17 @@ func (b *blockingListHandler) ListContainers(_ http.ResponseWriter, r *http.Requ
 // mockContainerRepo implements store.ContainerRepository for integration tests.
 // Only wire the methods your test needs; unconfigured methods panic.
 type mockContainerRepo struct {
-	CreateFunc func(ctx context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error)
+	CreateFunc func(ctx context.Context, spec v1alpha1.ContainerSpec, id string) (*v1alpha1.Container, error)
 	GetFunc    func(ctx context.Context, containerID string) (*v1alpha1.Container, error)
 	ListFunc   func(ctx context.Context, maxPageSize int32, pageToken string) (*v1alpha1.ContainerList, error)
 	DeleteFunc func(ctx context.Context, containerID string) error
 }
 
-func (m *mockContainerRepo) Create(ctx context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
+func (m *mockContainerRepo) Create(ctx context.Context, spec v1alpha1.ContainerSpec, id string) (*v1alpha1.Container, error) {
 	if m.CreateFunc == nil {
 		panic("unexpected call to Create")
 	}
-	return m.CreateFunc(ctx, c, id)
+	return m.CreateFunc(ctx, spec, id)
 }
 
 func (m *mockContainerRepo) Get(ctx context.Context, containerID string) (*v1alpha1.Container, error) {

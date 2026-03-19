@@ -81,12 +81,12 @@ var _ = Describe("Container API Handlers", func() {
 			// TC-U009: returns 201 with populated read-only fields
 			It("returns 201 with populated read-only fields (TC-U009)", func() {
 				body := validCreateBody()
-				repo.CreateFunc = func(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
+				repo.CreateFunc = func(_ context.Context, c v1alpha1.ContainerSpec, id string) (*v1alpha1.Container, error) {
 					return newContainerResult(c, id), nil
 				}
 
 				req := oapigen.CreateContainerRequestObject{
-					Body: &v1alpha1.CreateContainerRequest{Spec: body},
+					Body: &v1alpha1.Container{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -101,21 +101,21 @@ var _ = Describe("Container API Handlers", func() {
 				Expect(*created.Status).To(Equal(v1alpha1.PENDING))
 				Expect(created.CreateTime).NotTo(BeNil(), "create_time must be set")
 				Expect(created.UpdateTime).NotTo(BeNil(), "update_time must be set")
-				Expect(created.Metadata.Namespace).NotTo(BeNil(), "namespace must be set")
-				Expect(*created.Metadata.Namespace).To(Equal(testNamespace))
+				Expect(created.Spec.Metadata.Namespace).NotTo(BeNil(), "namespace must be set")
+				Expect(*created.Spec.Metadata.Namespace).To(Equal(testNamespace))
 			})
 
 			// TC-U010: generates UUID when no id query param
 			It("generates UUID when no id query param (TC-U010)", func() {
 				body := validCreateBody()
 				var capturedID string
-				repo.CreateFunc = func(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
+				repo.CreateFunc = func(_ context.Context, c v1alpha1.ContainerSpec, id string) (*v1alpha1.Container, error) {
 					capturedID = id
 					return newContainerResult(c, id), nil
 				}
 
 				req := oapigen.CreateContainerRequestObject{
-					Body: &v1alpha1.CreateContainerRequest{Spec: body},
+					Body: &v1alpha1.Container{Spec: body},
 					// Params.Id is nil — no client-specified ID
 				}
 
@@ -132,14 +132,14 @@ var _ = Describe("Container API Handlers", func() {
 				body := validCreateBody()
 				clientID := "my-custom-id"
 				var capturedID string
-				repo.CreateFunc = func(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
+				repo.CreateFunc = func(_ context.Context, c v1alpha1.ContainerSpec, id string) (*v1alpha1.Container, error) {
 					capturedID = id
 					return newContainerResult(c, id), nil
 				}
 
 				req := oapigen.CreateContainerRequestObject{
 					Params: v1alpha1.CreateContainerParams{Id: util.Ptr(clientID)},
-					Body:   &v1alpha1.CreateContainerRequest{Spec: body},
+					Body:   &v1alpha1.Container{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -153,14 +153,14 @@ var _ = Describe("Container API Handlers", func() {
 			// TC-U079: spec wrapper is unwrapped before passing to store
 			It("unwraps spec envelope before calling store (TC-U079)", func() {
 				body := validCreateBody()
-				var capturedContainer v1alpha1.Container
-				repo.CreateFunc = func(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
-					capturedContainer = c
+				var capturedSpec v1alpha1.ContainerSpec
+				repo.CreateFunc = func(_ context.Context, c v1alpha1.ContainerSpec, id string) (*v1alpha1.Container, error) {
+					capturedSpec = c
 					return newContainerResult(c, id), nil
 				}
 
 				req := oapigen.CreateContainerRequestObject{
-					Body: &v1alpha1.CreateContainerRequest{Spec: body},
+					Body: &v1alpha1.Container{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -168,8 +168,8 @@ var _ = Describe("Container API Handlers", func() {
 
 				_, ok := resp.(oapigen.CreateContainer201JSONResponse)
 				Expect(ok).To(BeTrue(), "expected CreateContainer201JSONResponse")
-				Expect(capturedContainer.Metadata.Name).To(Equal(body.Metadata.Name))
-				Expect(capturedContainer.Image.Reference).To(Equal(body.Image.Reference))
+				Expect(capturedSpec.Metadata.Name).To(Equal(body.Metadata.Name))
+				Expect(capturedSpec.Image.Reference).To(Equal(body.Image.Reference))
 			})
 
 			// TC-U081: provider_hints are accepted without error
@@ -177,12 +177,12 @@ var _ = Describe("Container API Handlers", func() {
 				body := validCreateBody()
 				hints := map[string]interface{}{"gpu": true, "zone": "us-east-1"}
 				body.ProviderHints = &hints
-				repo.CreateFunc = func(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
+				repo.CreateFunc = func(_ context.Context, c v1alpha1.ContainerSpec, id string) (*v1alpha1.Container, error) {
 					return newContainerResult(c, id), nil
 				}
 
 				req := oapigen.CreateContainerRequestObject{
-					Body: &v1alpha1.CreateContainerRequest{Spec: body},
+					Body: &v1alpha1.Container{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -197,12 +197,12 @@ var _ = Describe("Container API Handlers", func() {
 			// TC-U013: returns 409 on name conflict
 			It("returns 409 on name conflict (TC-U013)", func() {
 				body := validCreateBody()
-				repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
+				repo.CreateFunc = func(_ context.Context, _ v1alpha1.ContainerSpec, _ string) (*v1alpha1.Container, error) {
 					return nil, &store.ConflictError{Message: body.Metadata.Name}
 				}
 
 				req := oapigen.CreateContainerRequestObject{
-					Body: &v1alpha1.CreateContainerRequest{Spec: body},
+					Body: &v1alpha1.Container{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -217,13 +217,13 @@ var _ = Describe("Container API Handlers", func() {
 			It("rejects duplicate client-specified id (TC-U046)", func() {
 				body := validCreateBody()
 				clientID := "duplicate-id"
-				repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
+				repo.CreateFunc = func(_ context.Context, _ v1alpha1.ContainerSpec, _ string) (*v1alpha1.Container, error) {
 					return nil, &store.ConflictError{Message: clientID}
 				}
 
 				req := oapigen.CreateContainerRequestObject{
 					Params: v1alpha1.CreateContainerParams{Id: util.Ptr(clientID)},
-					Body:   &v1alpha1.CreateContainerRequest{Spec: body},
+					Body:   &v1alpha1.Container{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -242,14 +242,14 @@ var _ = Describe("Container API Handlers", func() {
 				inputLabels := map[string]string{"team": "platform", "env": "dev"}
 				body.Metadata.Labels = &inputLabels
 
-				var capturedContainer v1alpha1.Container
-				repo.CreateFunc = func(_ context.Context, c v1alpha1.Container, id string) (*v1alpha1.Container, error) {
-					capturedContainer = c
+				var capturedSpec v1alpha1.ContainerSpec
+				repo.CreateFunc = func(_ context.Context, c v1alpha1.ContainerSpec, id string) (*v1alpha1.Container, error) {
+					capturedSpec = c
 					return newContainerResult(c, id), nil
 				}
 
 				req := oapigen.CreateContainerRequestObject{
-					Body: &v1alpha1.CreateContainerRequest{Spec: body},
+					Body: &v1alpha1.Container{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -258,21 +258,21 @@ var _ = Describe("Container API Handlers", func() {
 				created, ok := resp.(oapigen.CreateContainer201JSONResponse)
 				Expect(ok).To(BeTrue(), "expected CreateContainer201JSONResponse")
 
-				Expect(capturedContainer.Metadata.Labels).NotTo(BeNil(), "labels must reach the store")
-				Expect(*capturedContainer.Metadata.Labels).To(Equal(inputLabels))
+				Expect(capturedSpec.Metadata.Labels).NotTo(BeNil(), "labels must reach the store")
+				Expect(*capturedSpec.Metadata.Labels).To(Equal(inputLabels))
 
-				Expect(created.Metadata.Labels).NotTo(BeNil(), "labels must be in the response")
-				Expect(*created.Metadata.Labels).To(Equal(inputLabels))
+				Expect(created.Spec.Metadata.Labels).NotTo(BeNil(), "labels must be in the response")
+				Expect(*created.Spec.Metadata.Labels).To(Equal(inputLabels))
 			})
 
 			// TC-U048: rejects min > max resources
 			DescribeTable("rejects min > max resources (TC-U048)",
-				func(mutate func(*v1alpha1.Container)) {
+				func(mutate func(*v1alpha1.ContainerSpec)) {
 					body := validCreateBody()
 					mutate(&body)
 
 					req := oapigen.CreateContainerRequestObject{
-						Body: &v1alpha1.CreateContainerRequest{Spec: body},
+						Body: &v1alpha1.Container{Spec: body},
 					}
 
 					resp, err := h.CreateContainer(context.Background(), req)
@@ -282,11 +282,11 @@ var _ = Describe("Container API Handlers", func() {
 					Expect(ok).To(BeTrue(), "expected 400 response for min > max")
 					Expect(errResp.Type).To(Equal(v1alpha1.INVALIDARGUMENT))
 				},
-				Entry("CPU min > max", func(c *v1alpha1.Container) {
+				Entry("CPU min > max", func(c *v1alpha1.ContainerSpec) {
 					c.Resources.Cpu.Min = 4
 					c.Resources.Cpu.Max = 2
 				}),
-				Entry("memory min > max", func(c *v1alpha1.Container) {
+				Entry("memory min > max", func(c *v1alpha1.ContainerSpec) {
 					c.Resources.Memory.Min = "4GB"
 					c.Resources.Memory.Max = "2GB"
 				}),
@@ -300,7 +300,7 @@ var _ = Describe("Container API Handlers", func() {
 					body.Resources.Memory.Max = memMax
 
 					req := oapigen.CreateContainerRequestObject{
-						Body: &v1alpha1.CreateContainerRequest{Spec: body},
+						Body: &v1alpha1.Container{Spec: body},
 					}
 
 					resp, err := h.CreateContainer(context.Background(), req)
@@ -322,7 +322,7 @@ var _ = Describe("Container API Handlers", func() {
 
 				req := oapigen.CreateContainerRequestObject{
 					Params: v1alpha1.CreateContainerParams{Id: util.Ptr(clientID)},
-					Body:   &v1alpha1.CreateContainerRequest{Spec: body},
+					Body:   &v1alpha1.Container{Spec: body},
 				}
 
 				resp, err := h.CreateContainer(context.Background(), req)
@@ -341,7 +341,7 @@ var _ = Describe("Container API Handlers", func() {
 					body.Metadata.Labels = &map[string]string{label: "user-value"}
 
 					req := oapigen.CreateContainerRequestObject{
-						Body: &v1alpha1.CreateContainerRequest{Spec: body},
+						Body: &v1alpha1.Container{Spec: body},
 					}
 
 					resp, err := h.CreateContainer(context.Background(), req)
@@ -558,13 +558,13 @@ var _ = Describe("Container API Handlers", func() {
 
 			Entry("CreateContainer 409 (conflict)",
 				func() {
-					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
+					repo.CreateFunc = func(_ context.Context, _ v1alpha1.ContainerSpec, _ string) (*v1alpha1.Container, error) {
 						return nil, &store.ConflictError{Message: "dup"}
 					}
 				},
 				func(s oapigen.StrictServerInterface) (interface{}, error) {
 					body := validCreateBody()
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.Container{Spec: body}})
 				},
 				"/api/v1alpha1/containers",
 				func(resp interface{}, expected string) {
@@ -633,13 +633,13 @@ var _ = Describe("Container API Handlers", func() {
 
 			Entry("CreateContainer 500 (internal error)",
 				func() {
-					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
+					repo.CreateFunc = func(_ context.Context, _ v1alpha1.ContainerSpec, _ string) (*v1alpha1.Container, error) {
 						return nil, errors.New("unexpected")
 					}
 				},
 				func(s oapigen.StrictServerInterface) (interface{}, error) {
 					body := validCreateBody()
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.Container{Spec: body}})
 				},
 				"/api/v1alpha1/containers",
 				func(resp interface{}, expected string) {
@@ -687,10 +687,10 @@ var _ = Describe("Container API Handlers", func() {
 			Entry("CreateContainer 409 has Type and Title",
 				func(s oapigen.StrictServerInterface) (interface{}, error) {
 					body := validCreateBody()
-					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
+					repo.CreateFunc = func(_ context.Context, _ v1alpha1.ContainerSpec, _ string) (*v1alpha1.Container, error) {
 						return nil, &store.ConflictError{Message: "dup"}
 					}
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.Container{Spec: body}})
 				},
 				func(resp interface{}) {
 					errResp, ok := resp.(oapigen.CreateContainer409ApplicationProblemPlusJSONResponse)
@@ -723,7 +723,7 @@ var _ = Describe("Container API Handlers", func() {
 					body.Resources.Cpu.Min = 4
 					body.Resources.Cpu.Max = 2
 					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{
-						Body: &v1alpha1.CreateContainerRequest{Spec: body},
+						Body: &v1alpha1.Container{Spec: body},
 					})
 				},
 				func(resp interface{}) {
@@ -769,10 +769,10 @@ var _ = Describe("Container API Handlers", func() {
 			Entry("ConflictError → 409 (Create)",
 				func(s oapigen.StrictServerInterface) (interface{}, error) {
 					body := validCreateBody()
-					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
+					repo.CreateFunc = func(_ context.Context, _ v1alpha1.ContainerSpec, _ string) (*v1alpha1.Container, error) {
 						return nil, &store.ConflictError{Message: "dup"}
 					}
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.Container{Spec: body}})
 				},
 				oapigen.CreateContainer409ApplicationProblemPlusJSONResponse{},
 			),
@@ -780,10 +780,10 @@ var _ = Describe("Container API Handlers", func() {
 			Entry("InvalidArgumentError → 400 (Create via store)",
 				func(s oapigen.StrictServerInterface) (interface{}, error) {
 					body := validCreateBody()
-					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
+					repo.CreateFunc = func(_ context.Context, _ v1alpha1.ContainerSpec, _ string) (*v1alpha1.Container, error) {
 						return nil, &store.InvalidArgumentError{Message: "service creation requires at least one port"}
 					}
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.Container{Spec: body}})
 				},
 				oapigen.CreateContainer400ApplicationProblemPlusJSONResponse{},
 			),
@@ -803,10 +803,10 @@ var _ = Describe("Container API Handlers", func() {
 			Entry("unexpected error → 500 (Create)",
 				func(s oapigen.StrictServerInterface) (interface{}, error) {
 					body := validCreateBody()
-					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
+					repo.CreateFunc = func(_ context.Context, _ v1alpha1.ContainerSpec, _ string) (*v1alpha1.Container, error) {
 						return nil, errors.New("unexpected")
 					}
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.Container{Spec: body}})
 				},
 				oapigen.CreateContainer500ApplicationProblemPlusJSONResponse{},
 			),
@@ -857,13 +857,13 @@ var _ = Describe("Container API Handlers", func() {
 
 			Entry("Create",
 				func() {
-					repo.CreateFunc = func(_ context.Context, _ v1alpha1.Container, _ string) (*v1alpha1.Container, error) {
+					repo.CreateFunc = func(_ context.Context, _ v1alpha1.ContainerSpec, _ string) (*v1alpha1.Container, error) {
 						return nil, errors.New("database connection lost")
 					}
 				},
 				func(s oapigen.StrictServerInterface) (interface{}, error) {
 					body := validCreateBody()
-					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.CreateContainerRequest{Spec: body}})
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.Container{Spec: body}})
 				},
 				func(resp interface{}) {
 					errResp, ok := resp.(oapigen.CreateContainer500ApplicationProblemPlusJSONResponse)

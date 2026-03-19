@@ -40,15 +40,12 @@ func containerFromDeployment(deploy *appsv1.Deployment, instanceID string) v1alp
 	path := fmt.Sprintf("containers/%s", instanceID)
 	ns := deploy.Namespace
 	createTime := deploy.CreationTimestamp.Time
-	serviceType := v1alpha1.ContainerServiceTypeContainer
+	serviceType := v1alpha1.ContainerSpecServiceTypeContainer
 
 	k8sC := containers[0]
 
-	c := v1alpha1.Container{
-		Id:          &id,
-		Path:        &path,
+	spec := v1alpha1.ContainerSpec{
 		ServiceType: serviceType,
-		CreateTime:  &createTime,
 		Image:       v1alpha1.ContainerImage{Reference: k8sC.Image},
 		Metadata: v1alpha1.ContainerMetadata{
 			Name:      deploy.Name,
@@ -57,11 +54,11 @@ func containerFromDeployment(deploy *appsv1.Deployment, instanceID string) v1alp
 	}
 
 	// Reconstruct resources from K8s resource requirements.
-	c.Resources = resourcesFromContainer(k8sC)
+	spec.Resources = resourcesFromContainer(k8sC)
 
 	// Reconstruct process (command/args/env) if present.
 	if proc := processFromContainer(k8sC); proc != nil {
-		c.Process = proc
+		spec.Process = proc
 	}
 
 	// Reconstruct network ports if present.
@@ -74,15 +71,20 @@ func containerFromDeployment(deploy *appsv1.Deployment, instanceID string) v1alp
 				Visibility:    v1alpha1.None,
 			}
 		}
-		c.Network = &v1alpha1.ContainerNetwork{Ports: &ports}
+		spec.Network = &v1alpha1.ContainerNetwork{Ports: &ports}
 	}
 
 	// Reconstruct user labels by filtering out DCM reserved labels.
 	if userLabels := userLabelsFromDeployment(deploy); len(userLabels) > 0 {
-		c.Metadata.Labels = &userLabels
+		spec.Metadata.Labels = &userLabels
 	}
 
-	return c
+	return v1alpha1.Container{
+		Id:         &id,
+		Path:       &path,
+		CreateTime: &createTime,
+		Spec:       spec,
+	}
 }
 
 // resourcesFromContainer extracts CPU and memory resources from a K8s container spec.
@@ -151,10 +153,10 @@ func enrichWithPod(container *v1alpha1.Container, pod *corev1.Pod) {
 	}
 
 	if pod.Status.PodIP != "" {
-		if container.Network == nil {
-			container.Network = &v1alpha1.ContainerNetwork{}
+		if container.Spec.Network == nil {
+			container.Spec.Network = &v1alpha1.ContainerNetwork{}
 		}
-		container.Network.Ip = &pod.Status.PodIP
+		container.Spec.Network.Ip = &pod.Status.PodIP
 	}
 
 	if t := latestPodTransitionTime(pod); t != nil {
@@ -197,11 +199,11 @@ func enrichWithService(container *v1alpha1.Container, svc *corev1.Service) {
 	container.Service = info
 
 	// Infer port visibility from Service state.
-	if container.Network != nil && container.Network.Ports != nil && len(*container.Network.Ports) > 0 {
+	if container.Spec.Network != nil && container.Spec.Network.Ports != nil && len(*container.Spec.Network.Ports) > 0 {
 		visibility := inferVisibility(svc.Spec.Type)
-		for i := range *container.Network.Ports {
-			if svcTargetPorts[(*container.Network.Ports)[i].ContainerPort] {
-				(*container.Network.Ports)[i].Visibility = visibility
+		for i := range *container.Spec.Network.Ports {
+			if svcTargetPorts[(*container.Spec.Network.Ports)[i].ContainerPort] {
+				(*container.Spec.Network.Ports)[i].Visibility = visibility
 			}
 			// Ports not in the Service keep their default (none).
 		}
@@ -249,23 +251,23 @@ func latestDeploymentTransitionTime(deploy *appsv1.Deployment) *time.Time {
 }
 
 // buildDeployment creates a Kubernetes Deployment from a Container spec.
-func buildDeployment(container v1alpha1.Container, id string, cfg K8sConfig, labels map[string]string) *appsv1.Deployment {
+func buildDeployment(spec v1alpha1.ContainerSpec, id string, cfg K8sConfig, labels map[string]string) *appsv1.Deployment {
 	replicas := int32(1)
 
 	// Selector uses only DCM labels (immutable after creation)
 	selectorLabels := dcmLabels(id)
 
 	// CPU resources
-	cpuReq, cpuLim := units.ConvertCPU(container.Resources.Cpu)
+	cpuReq, cpuLim := units.ConvertCPU(spec.Resources.Cpu)
 
 	// Memory resources — errors handled upstream; safe to ignore here since
 	// validation occurs before buildDeployment is called.
-	memReq, _ := units.ConvertMemory(container.Resources.Memory.Min)
-	memLim, _ := units.ConvertMemory(container.Resources.Memory.Max)
+	memReq, _ := units.ConvertMemory(spec.Resources.Memory.Min)
+	memLim, _ := units.ConvertMemory(spec.Resources.Memory.Max)
 
 	k8sContainer := corev1.Container{
-		Name:  container.Metadata.Name,
-		Image: container.Image.Reference,
+		Name:  spec.Metadata.Name,
+		Image: spec.Image.Reference,
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    cpuReq,
@@ -278,25 +280,25 @@ func buildDeployment(container v1alpha1.Container, id string, cfg K8sConfig, lab
 		},
 	}
 
-	if container.Process != nil {
-		if container.Process.Command != nil {
-			k8sContainer.Command = *container.Process.Command
+	if spec.Process != nil {
+		if spec.Process.Command != nil {
+			k8sContainer.Command = *spec.Process.Command
 		}
-		if container.Process.Args != nil {
-			k8sContainer.Args = *container.Process.Args
+		if spec.Process.Args != nil {
+			k8sContainer.Args = *spec.Process.Args
 		}
-		if container.Process.Env != nil {
-			envVars := make([]corev1.EnvVar, len(*container.Process.Env))
-			for i, e := range *container.Process.Env {
+		if spec.Process.Env != nil {
+			envVars := make([]corev1.EnvVar, len(*spec.Process.Env))
+			for i, e := range *spec.Process.Env {
 				envVars[i] = corev1.EnvVar{Name: e.Name, Value: e.Value}
 			}
 			k8sContainer.Env = envVars
 		}
 	}
 
-	if container.Network != nil && container.Network.Ports != nil && len(*container.Network.Ports) > 0 {
-		ports := make([]corev1.ContainerPort, len(*container.Network.Ports))
-		for i, p := range *container.Network.Ports {
+	if spec.Network != nil && spec.Network.Ports != nil && len(*spec.Network.Ports) > 0 {
+		ports := make([]corev1.ContainerPort, len(*spec.Network.Ports))
+		for i, p := range *spec.Network.Ports {
 			ports[i] = corev1.ContainerPort{
 				ContainerPort: int32(p.ContainerPort),
 			}
@@ -306,7 +308,7 @@ func buildDeployment(container v1alpha1.Container, id string, cfg K8sConfig, lab
 
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      container.Metadata.Name,
+			Name:      spec.Metadata.Name,
 			Namespace: cfg.Namespace,
 			Labels:    labels,
 		},
@@ -329,7 +331,7 @@ func buildDeployment(container v1alpha1.Container, id string, cfg K8sConfig, lab
 
 // buildService creates a Kubernetes Service from a Container spec.
 // servicePorts contains only the ports with non-none visibility.
-func buildService(container v1alpha1.Container, id string, cfg K8sConfig, labels map[string]string, svcType corev1.ServiceType, servicePorts []v1alpha1.ContainerPort) *corev1.Service {
+func buildService(spec v1alpha1.ContainerSpec, id string, cfg K8sConfig, labels map[string]string, svcType corev1.ServiceType, servicePorts []v1alpha1.ContainerPort) *corev1.Service {
 	// Selector uses only DCM labels
 	selectorLabels := dcmLabels(id)
 
@@ -345,7 +347,7 @@ func buildService(container v1alpha1.Container, id string, cfg K8sConfig, labels
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      container.Metadata.Name,
+			Name:      spec.Metadata.Name,
 			Namespace: cfg.Namespace,
 			Labels:    labels,
 		},

@@ -38,9 +38,9 @@ var _ = Describe("K8s Store", func() {
 			Expect(*result.Status).To(Equal(v1alpha1.RUNNING))
 
 			// Network IP from Pod
-			Expect(result.Network).NotTo(BeNil())
-			Expect(result.Network.Ip).NotTo(BeNil())
-			Expect(*result.Network.Ip).To(Equal("10.0.0.1"))
+			Expect(result.Spec.Network).NotTo(BeNil())
+			Expect(result.Spec.Network.Ip).NotTo(BeNil())
+			Expect(*result.Spec.Network.Ip).To(Equal("10.0.0.1"))
 
 			// Service info
 			Expect(result.Service).NotTo(BeNil())
@@ -169,8 +169,8 @@ var _ = Describe("K8s Store", func() {
 
 			// Status and network IP should be present
 			Expect(result.Status).NotTo(BeNil())
-			Expect(result.Network).NotTo(BeNil())
-			Expect(result.Network.Ip).NotTo(BeNil())
+			Expect(result.Spec.Network).NotTo(BeNil())
+			Expect(result.Spec.Network.Ip).NotTo(BeNil())
 
 			// Service should be nil when no Service exists
 			Expect(result.Service).To(BeNil())

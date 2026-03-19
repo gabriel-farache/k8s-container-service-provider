@@ -39,9 +39,9 @@ var _ = Describe("K8s Store", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Status).NotTo(BeNil())
 			Expect(*result.Status).To(Equal(v1alpha1.RUNNING))
-			Expect(result.Network).NotTo(BeNil())
-			Expect(result.Network.Ip).NotTo(BeNil())
-			Expect(*result.Network.Ip).To(Equal("10.0.0.1"))
+			Expect(result.Spec.Network).NotTo(BeNil())
+			Expect(result.Spec.Network.Ip).NotTo(BeNil())
+			Expect(*result.Spec.Network.Ip).To(Equal("10.0.0.1"))
 		})
 
 		// TC-I108: Get returns newest pod when 2 pods exist during rollout (both Pending)

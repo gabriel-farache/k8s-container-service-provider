@@ -35,7 +35,7 @@ func NewHandler(repo store.ContainerRepository, logger *slog.Logger, startTime t
 const containersBasePath = "/api/v1alpha1/containers"
 
 func (h *Handler) CreateContainer(ctx context.Context, req oapigen.CreateContainerRequestObject) (oapigen.CreateContainerResponseObject, error) {
-	container := req.Body.Spec
+	spec := req.Body.Spec
 
 	var id string
 	if req.Params.Id != nil {
@@ -50,15 +50,15 @@ func (h *Handler) CreateContainer(ctx context.Context, req oapigen.CreateContain
 		return newCreateError400(err.Error(), requestPath), nil
 	}
 
-	if err := validateResources(container.Resources); err != nil {
+	if err := validateResources(spec.Resources); err != nil {
 		return newCreateError400(err.Error(), requestPath), nil
 	}
 
-	if err := validateUserLabels(container.Metadata.Labels); err != nil {
+	if err := validateUserLabels(spec.Metadata.Labels); err != nil {
 		return newCreateError400(err.Error(), requestPath), nil
 	}
 
-	result, err := h.store.Create(ctx, container, id)
+	result, err := h.store.Create(ctx, spec, id)
 	if err != nil {
 		return h.mapCreateError(err, requestPath), nil
 	}

@@ -9,16 +9,16 @@ import (
 	"time"
 )
 
-// Defines values for ContainerServiceType.
-const (
-	ContainerServiceTypeContainer ContainerServiceType = "container"
-)
-
 // Defines values for ContainerPortVisibility.
 const (
 	External ContainerPortVisibility = "external"
 	Internal ContainerPortVisibility = "internal"
 	None     ContainerPortVisibility = "none"
+)
+
+// Defines values for ContainerSpecServiceType.
+const (
+	ContainerSpecServiceTypeContainer ContainerSpecServiceType = "container"
 )
 
 // Defines values for ContainerStatus.
@@ -56,38 +56,17 @@ type Container struct {
 	// Id Unique identifier for the container instance
 	Id *string `json:"id,omitempty"`
 
-	// Image Container image specification
-	Image ContainerImage `json:"image"`
-
-	// Metadata Resource metadata for identification
-	Metadata ContainerMetadata `json:"metadata"`
-
-	// Network Network configuration
-	Network *ContainerNetwork `json:"network,omitempty"`
-
 	// Path Resource path identifier
-	Path *string `json:"path,omitempty"`
+	Path    *string      `json:"path,omitempty"`
+	Service *ServiceInfo `json:"service,omitempty"`
 
-	// Process Container process configuration
-	Process *ContainerProcess `json:"process,omitempty"`
-
-	// ProviderHints Optional provider-specific hints from the catalog (accepted, not acted upon)
-	ProviderHints *map[string]interface{} `json:"provider_hints,omitempty"`
-
-	// Resources CPU and memory resource constraints
-	Resources ContainerResources `json:"resources"`
-	Service   *ServiceInfo       `json:"service,omitempty"`
-
-	// ServiceType Service type identifier (must be "container")
-	ServiceType ContainerServiceType `json:"service_type"`
-	Status      *ContainerStatus     `json:"status,omitempty"`
+	// Spec Container specification with input fields for creating a container
+	Spec   ContainerSpec    `json:"spec"`
+	Status *ContainerStatus `json:"status,omitempty"`
 
 	// UpdateTime Timestamp when the container was last updated
 	UpdateTime *time.Time `json:"update_time,omitempty"`
 }
-
-// ContainerServiceType Service type identifier (must be "container")
-type ContainerServiceType string
 
 // ContainerCpu CPU resource constraints
 type ContainerCpu struct {
@@ -203,14 +182,35 @@ type ContainerResources struct {
 	AdditionalProperties map[string]interface{} `json:"-"`
 }
 
+// ContainerSpec Container specification with input fields for creating a container
+type ContainerSpec struct {
+	// Image Container image specification
+	Image ContainerImage `json:"image"`
+
+	// Metadata Resource metadata for identification
+	Metadata ContainerMetadata `json:"metadata"`
+
+	// Network Network configuration
+	Network *ContainerNetwork `json:"network,omitempty"`
+
+	// Process Container process configuration
+	Process *ContainerProcess `json:"process,omitempty"`
+
+	// ProviderHints Optional provider-specific hints from the catalog (accepted, not acted upon)
+	ProviderHints *map[string]interface{} `json:"provider_hints,omitempty"`
+
+	// Resources CPU and memory resource constraints
+	Resources ContainerResources `json:"resources"`
+
+	// ServiceType Service type identifier (must be "container")
+	ServiceType ContainerSpecServiceType `json:"service_type"`
+}
+
+// ContainerSpecServiceType Service type identifier (must be "container")
+type ContainerSpecServiceType string
+
 // ContainerStatus Current status of the container instance
 type ContainerStatus string
-
-// CreateContainerRequest Wrapper for container creation requests. The SPRM wraps the catalog container spec in a "spec" envelope before forwarding to service providers.
-type CreateContainerRequest struct {
-	// Spec Container resource representing a container instance
-	Spec Container `json:"spec"`
-}
 
 // Error RFC 7807 compliant error response
 type Error struct {
@@ -307,7 +307,7 @@ type CreateContainerParams struct {
 }
 
 // CreateContainerJSONRequestBody defines body for CreateContainer for application/json ContentType.
-type CreateContainerJSONRequestBody = CreateContainerRequest
+type CreateContainerJSONRequestBody = Container
 
 // Getter for additional properties for ContainerCpu. Returns the specified
 // element and whether it was found
