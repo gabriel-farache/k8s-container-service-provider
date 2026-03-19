@@ -127,10 +127,9 @@ construction, debounce, indexer functions, registration payload builders) are
 - **Requirement:** REQ-API-050
 - **Priority:** High
 - **Type:** Unit (table-driven)
-- **Given:** Invalid IDs that violate pattern `^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$`
+- **Given:** Invalid IDs that violate pattern `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`
 - **When:** `POST /api/v1alpha1/containers?id={invalid}` is called for each:
   - `"UPPERCASE"` (uppercase letters)
-  - `"123-starts-digit"` (starts with digit)
   - `"-leading-dash"` (starts with dash)
   - `"trailing-"` (ends with dash)
   - `"has_underscore"` (underscore)
@@ -278,7 +277,7 @@ construction, debounce, indexer functions, registration payload builders) are
 - **Requirement:** REQ-API-050 (positive boundary)
 - **Priority:** Medium
 - **Type:** Unit (table-driven)
-- **Given:** Client-specified IDs at the boundaries of the valid pattern `^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$`
+- **Given:** Client-specified IDs at the boundaries of the valid pattern `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`
 - **When:** `POST /api/v1alpha1/containers?id={valid}` is called for each:
   - `"a"` (single character — minimum length)
   - `"ab"` (two characters)

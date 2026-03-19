@@ -315,7 +315,7 @@ size limits.
 | REQ-API-020 | POST `/api/v1alpha1/containers` MUST create a container and return 201 Created with read-only fields populated | MUST | |
 | REQ-API-030 | When no `id` query parameter is provided, the server MUST generate a UUID for the container | MUST | |
 | REQ-API-040 | When an `id` query parameter is provided, the server MUST use it as the container ID | MUST | |
-| REQ-API-050 | Client-specified IDs MUST be validated against AEP-122 pattern `^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$` | MUST | |
+| REQ-API-050 | Client-specified IDs MUST be validated against AEP-122 pattern `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$` | MUST | |
 | REQ-API-060 | Newly created containers MUST have status set to PENDING | MUST | |
 | REQ-API-070 | The create response MUST populate all read-only fields: `id`, `path`, `status`, `create_time`, `update_time`, `metadata.namespace` | MUST | |
 | REQ-API-080 | POST MUST return 409 Conflict when a container with the same `metadata.name` already exists | MUST | SC-001 |
@@ -372,7 +372,7 @@ size limits.
 
 - **Validates:** REQ-API-050
 - **Given** POST `/api/v1alpha1/containers?id=INVALID_ID` is called
-- **When** the ID does not match pattern `^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$`
+- **When** the ID does not match pattern `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`
 - **Then** the response MUST be 400 Bad Request with an RFC 7807 error body
 
 ##### AC-API-050: Create container - initial status
