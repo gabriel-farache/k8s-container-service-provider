@@ -39,12 +39,25 @@ type KubernetesConfig struct {
 	DefaultServiceType string `env:"DEFAULT_SVC_TYPE"     envDefault:"ClusterIP"`
 }
 
+// NATSConfig holds NATS connection settings.
+type NATSConfig struct {
+	URL string `env:"URL,notEmpty"`
+}
+
+// MonitoringConfig holds status monitoring settings.
+type MonitoringConfig struct {
+	DebounceMs   int           `env:"DEBOUNCE_MS"   envDefault:"500"`
+	ResyncPeriod time.Duration `env:"RESYNC_PERIOD" envDefault:"10m"`
+}
+
 // Config is the root configuration for the service provider.
 type Config struct {
 	Server     ServerConfig     `envPrefix:"SP_SERVER_"`
 	Provider   ProviderConfig   `envPrefix:"SP_"`
 	DCM        DCMConfig        `envPrefix:"DCM_"`
 	Kubernetes KubernetesConfig `envPrefix:"SP_K8S_"`
+	NATS       NATSConfig       `envPrefix:"SP_NATS_"`
+	Monitoring MonitoringConfig `envPrefix:"SP_MONITOR_"`
 }
 
 // Load reads configuration from environment variables.

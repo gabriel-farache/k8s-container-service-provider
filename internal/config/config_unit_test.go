@@ -24,6 +24,7 @@ var _ = Describe("Configuration", func() {
 		_ = os.Unsetenv("SP_REGION")
 		_ = os.Unsetenv("SP_ZONE")
 		_ = os.Unsetenv("DCM_REGISTRATION_URL")
+		_ = os.Unsetenv("SP_NATS_URL")
 		_ = os.Unsetenv("SP_SERVER_REQUEST_TIMEOUT")
 	}
 
@@ -40,6 +41,7 @@ var _ = Describe("Configuration", func() {
 		_ = os.Setenv("SP_NAME", "test-sp")
 		_ = os.Setenv("SP_ENDPOINT", "https://test.example.com")
 		_ = os.Setenv("DCM_REGISTRATION_URL", "https://dcm.example.com")
+		_ = os.Setenv("SP_NATS_URL", "nats://test:4222")
 	}
 
 	// TC-U002: Load configuration from environment variables
@@ -98,5 +100,6 @@ var _ = Describe("Configuration", func() {
 		Expect(errMsg).To(ContainSubstring("SP_NAME"))
 		Expect(errMsg).To(ContainSubstring("SP_ENDPOINT"))
 		Expect(errMsg).To(ContainSubstring("DCM_REGISTRATION_URL"))
+		Expect(errMsg).To(ContainSubstring("SP_NATS_URL"))
 	})
 })

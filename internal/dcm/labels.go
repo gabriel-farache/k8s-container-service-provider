@@ -2,9 +2,9 @@
 package dcm
 
 const (
-	LabelManagedBy    = "managed-by"
-	LabelInstanceID   = "dcm-instance-id"
-	LabelServiceType  = "dcm-service-type"
+	LabelManagedBy    = "dcm.project/managed-by"
+	LabelInstanceID   = "dcm.project/dcm-instance-id"
+	LabelServiceType  = "dcm.project/dcm-service-type"
 	ValueManagedByDCM = "dcm"
 	ValueServiceType  = "container"
 )

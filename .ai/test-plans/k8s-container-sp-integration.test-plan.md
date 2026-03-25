@@ -3,10 +3,10 @@
 ## Overview
 
 - **Related Spec:** .ai/specs/k8s-container-sp.spec.md
-- **Related Requirements:** REQ-HTTP-010–040, REQ-HTTP-060–070, REQ-HTTP-080–090, REQ-HTTP-110, REQ-API-070, REQ-API-180, REQ-STR-020–070, REQ-STR-080, REQ-K8S-010–270, REQ-MON-010–030, REQ-MON-040–070, REQ-MON-100, REQ-MON-110, REQ-MON-130–150, REQ-MON-160, REQ-MON-180–190, REQ-REG-010–070, REQ-XC-ID-010–020, REQ-XC-LBL-010, REQ-XC-ERR-010–020, REQ-XC-LOG-010–020
+- **Related Requirements:** REQ-HTTP-010–040, REQ-HTTP-060–070, REQ-HTTP-080–090, REQ-HTTP-110, REQ-API-070, REQ-API-180, REQ-STR-020–070, REQ-STR-080, REQ-K8S-010–270, REQ-MON-010–030, REQ-MON-040–080, REQ-MON-095, REQ-MON-100, REQ-MON-110, REQ-MON-130–150, REQ-MON-160, REQ-MON-180–190, REQ-REG-010–070, REQ-XC-ID-010–020, REQ-XC-LBL-010, REQ-XC-ERR-010–020, REQ-XC-LOG-010–020
 - **Framework:** Ginkgo v2 + Gomega
 - **Created:** 2026-02-17
-- **Last Updated:** 2026-03-10 (TC-ID collision fix: renumbered TC-I102–TC-I110; added REQ-K8S-280/290/300; updated coverage matrix)
+- **Last Updated:** 2026-03-25 (added TC-I113, TC-I114 for delete handler cross-lookup bug fix)
 
 Integration tests verify components working together with realistic (but
 controlled) dependencies. The K8s store tests use `client-go/kubernetes/fake`.
@@ -236,7 +236,7 @@ for full descriptions.
 - **Type:** Integration
 - **Given:** A container with id `"abc-123"` and `metadata.name="my-app"`
 - **When:** `Create` is called
-- **Then:** The Deployment has labels `managed-by=dcm`, `dcm-instance-id=abc-123`, `dcm-service-type=container` AND the Pod template spec has the same three labels
+- **Then:** The Deployment has labels `dcm.project/managed-by=dcm`, `dcm.project/dcm-instance-id=abc-123`, `dcm.project/dcm-service-type=container` AND the Pod template spec has the same three labels
 
 ### TC-I011: Deployment uses the specified container image
 
@@ -312,12 +312,12 @@ for full descriptions.
 - **When:** `Create` is called
 - **Then:** Container spec has no `command`, no `args`, no `env`, no `ports`
 
-### TC-I069: Create rejects duplicate dcm-instance-id
+### TC-I069: Create rejects duplicate dcm.project/dcm-instance-id
 
 - **Requirement:** REQ-K8S-170 (extended to `id` uniqueness — see SC-001)
 - **Priority:** High
 - **Type:** Integration
-- **Given:** A container with `dcm-instance-id="existing-id"` already exists in the namespace
+- **Given:** A container with `dcm.project/dcm-instance-id="existing-id"` already exists in the namespace
 - **When:** `Create` is called with a different `metadata.name` but the same `id="existing-id"`
 - **Then:** A conflict error is returned AND no new Deployment is created
 
@@ -336,7 +336,7 @@ for full descriptions.
 - **Priority:** High
 - **Type:** Integration
 - **Transitively covers:** TC-U049 (CreateContainer rejects metadata.labels colliding with DCM labels)
-- **Given:** A container with `metadata.labels: {"managed-by": "custom-value"}`
+- **Given:** A container with `metadata.labels: {"dcm.project/managed-by": "custom-value"}`
 - **When:** `Create` is called
 - **Then:** An error is returned indicating the label key collides with a DCM-reserved label AND no Deployment is created
 
@@ -437,7 +437,7 @@ for full descriptions.
 - **Type:** Integration
 - **Given:** Container with id `"abc-123"` AND port with `visibility=internal`
 - **When:** `Create` is called
-- **Then:** Service has labels `managed-by=dcm`, `dcm-instance-id=abc-123`, `dcm-service-type=container`
+- **Then:** Service has labels `dcm.project/managed-by=dcm`, `dcm.project/dcm-instance-id=abc-123`, `dcm.project/dcm-service-type=container`
 
 ### TC-I074: External port uses DefaultServiceType=NodePort
 
@@ -523,7 +523,7 @@ for full descriptions.
 - **Requirement:** REQ-K8S-300
 - **Priority:** High
 - **Type:** Integration
-- **Given:** Two Deployments exist with the same `dcm-instance-id` label but different names
+- **Given:** Two Deployments exist with the same `dcm.project/dcm-instance-id` label but different names
 - **When:** `Get` is called with that instance ID
 - **Then:** A `ConflictError` is returned
 
@@ -532,7 +532,7 @@ for full descriptions.
 - **Requirement:** REQ-K8S-300
 - **Priority:** High
 - **Type:** Integration
-- **Given:** Two Deployments exist with the same `dcm-instance-id` label but different names
+- **Given:** Two Deployments exist with the same `dcm.project/dcm-instance-id` label but different names
 - **When:** `Delete` is called with that instance ID
 - **Then:** A `ConflictError` is returned AND neither Deployment is deleted
 
@@ -772,18 +772,18 @@ for full descriptions.
 - **Requirement:** REQ-MON-030
 - **Priority:** High
 - **Type:** Integration
-- **Transitively covers:** TC-U041 (Missing dcm-instance-id label handled gracefully — non-DCM resources are skipped without error)
+- **Transitively covers:** TC-U041 (Missing dcm.project/dcm-instance-id label handled gracefully — non-DCM resources are skipped without error)
 - **Given:** The namespace contains both DCM-labeled and non-DCM-labeled Deployments/Pods
 - **When:** Informer events are processed
-- **Then:** Only resources with labels `managed-by=dcm` AND `dcm-service-type=container` trigger event handlers
+- **Then:** Only resources with labels `dcm.project/managed-by=dcm` AND `dcm.project/dcm-service-type=container` trigger event handlers
 
-### TC-I043: Informer indexer enables lookup by dcm-instance-id
+### TC-I043: Informer indexer enables lookup by dcm.project/dcm-instance-id
 
 - **Requirement:** REQ-MON-040
 - **Priority:** High
 - **Type:** Integration
-- **Transitively covers:** TC-U040 (Instance ID extracted from dcm-instance-id label), TC-U042 (Indexer function returns dcm-instance-id value)
-- **Given:** The informer cache contains resources with `dcm-instance-id="abc-123"`
+- **Transitively covers:** TC-U040 (Instance ID extracted from dcm.project/dcm-instance-id label), TC-U042 (Indexer function returns dcm.project/dcm-instance-id value)
+- **Given:** The informer cache contains resources with `dcm.project/dcm-instance-id="abc-123"`
 - **When:** An index lookup for `"abc-123"` is performed
 - **Then:** The correct resource(s) are returned
 
@@ -861,31 +861,54 @@ for full descriptions.
 - **When:** The Pod informer fires an update event
 - **Then:** No CloudEvent is published AND the instance status is not updated
 
+### TC-I113: Deploy deleted while Pod still exists uses Pod status
+
+- **Requirement:** REQ-MON-050, REQ-MON-070
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A Deployment and a Running Pod exist for instance `"abc-123"`
+- **When:** The Deployment is deleted (Pod remains)
+- **Then:** The last published status for `"abc-123"` is `RUNNING` (not `DELETED`) because the Pod takes precedence per REQ-MON-050
+
+### TC-I114: Pod deleted while remaining Pods exist uses worst remaining Pod
+
+- **Requirement:** REQ-MON-050
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A Deployment and two Pods exist for instance `"abc-123"`: one `Pending` (`pod-a`) and one `Running` (`pod-b`)
+- **When:** The Pending Pod (`pod-a`) is deleted
+- **Then:** The last published status for `"abc-123"` is `RUNNING` (from the surviving Pod), not `PENDING` (deploy-only fallback)
+
 ---
 
 ## 10 · Monitoring — NATS Publishing
 
 > **Suggested Ginkgo structure:** `Describe("Status Monitor")` → `Describe("NATS Publishing")`
 
-### TC-I047: Status event published to correct NATS subject
+### TC-I047: Status event published to correct NATS subject with valid CloudEvent
 
-- **Requirement:** REQ-MON-100
+- **Requirement:** REQ-MON-100, REQ-MON-095
 - **Priority:** High
 - **Type:** Integration
 - **Transitively covers:** TC-U036 (CloudEvent has correct v1.0 structure)
-- **Given:** Provider name is `"k8s-sp"` AND a status change occurs for instance `"abc-123"`
+- **Given:** Provider name is `"k8s-sp"` AND a status change occurs for instance `"abc-123"` with status `RUNNING`
 - **When:** The CloudEvent is published to NATS
-- **Then:** The NATS subject is `"dcm.providers.k8s-sp.container.instances.abc-123.status"` AND the message is a valid CloudEvent
+- **Then:** The NATS subject is `"dcm.container"` AND the message is a valid CloudEvent with:
+  - `source`: `"dcm/providers/k8s-sp"`
+  - `type`: `"dcm.status.container"`
+  - `datacontenttype`: `"application/json"`
+  - `data.id`: `"abc-123"`
+  - `data.status`: `"RUNNING"`
 
-### TC-I048: FAILED event published with failure reason
+### TC-I048: FAILED event published with failure reason and instance ID
 
-- **Requirement:** REQ-MON-150
+- **Requirement:** REQ-MON-150, REQ-MON-095
 - **Priority:** High
 - **Type:** Integration
 - **Transitively covers:** TC-U037 (FAILED CloudEvent includes failure reason in message)
-- **Given:** A Pod fails with container status reason `"CrashLoopBackOff"`
+- **Given:** A Pod fails with container status reason `"CrashLoopBackOff"` for instance `"abc-123"`
 - **When:** The status event is published via NATS
-- **Then:** The CloudEvent data message includes `"CrashLoopBackOff"`
+- **Then:** The CloudEvent `data.id` is `"abc-123"` AND `data.status` is `"FAILED"` AND `data.message` includes `"CrashLoopBackOff"`
 
 ---
 
@@ -949,12 +972,22 @@ for full descriptions.
 - **When:** Pod phase changes to `Running`, the debounce window elapses fully, then Pod phase changes to `Failed`
 - **Then:** Two separate CloudEvents are published to NATS: first with status `RUNNING`, then with status `FAILED`
 
+### TC-I115: Debouncing operates independently per instance ID
+
+- **Requirement:** REQ-MON-110
+- **AC:** AC-MON-101
+- **Priority:** High
+- **Type:** Integration
+- **Given:** A debouncer with interval of 100ms
+- **When:** Rapid events are submitted for instance `"instance-a"` (PENDING then RUNNING) AND a single event is submitted for instance `"instance-b"` (FAILED) within the same window
+- **Then:** Two events are published total: one for `"instance-a"` with status `RUNNING` (coalesced) AND one for `"instance-b"` with status `FAILED` (independent)
+
 ### TC-I099: Watchers reconnect after API server interruption
 
 - **Requirement:** REQ-MON-160
 - **Priority:** High
 - **Type:** Integration
-- **Status:** Pending implementation (monitoring subsystem not yet built)
+- **Status:** Implemented
 - **Given:** Resource watchers are running and connected to the API server
 - **When:** The API server connection is interrupted and then restored
 - **Then:** Resource watchers MUST automatically reconnect and resume processing events
@@ -964,7 +997,7 @@ for full descriptions.
 - **Requirement:** REQ-MON-180
 - **Priority:** High
 - **Type:** Integration
-- **Status:** Pending implementation (monitoring subsystem not yet built)
+- **Status:** Implemented
 - **Given:** A status event needs to be published
 - **When:** NATS returns a transient failure on the first attempt
 - **Then:** The publisher MUST retry with increasing intervals (exponential backoff)
@@ -974,7 +1007,7 @@ for full descriptions.
 - **Requirement:** REQ-MON-190
 - **Priority:** High
 - **Type:** Integration
-- **Status:** Pending implementation (monitoring subsystem not yet built)
+- **Status:** Implemented
 - **Given:** NATS is unavailable
 - **When:** The SP attempts to publish a status event
 - **Then:** The failure MUST be logged at ERROR level AND the SP MUST continue serving HTTP requests
@@ -1203,20 +1236,21 @@ for full descriptions.
 | REQ-MON-020    | TC-I041                             | Covered |
 | REQ-MON-030    | TC-I042                             | Covered |
 | REQ-MON-040    | TC-I043                             | Covered |
-| REQ-MON-050    | TC-I044                             | Covered |
+| REQ-MON-050    | TC-I044, TC-I113, TC-I114           | Covered |
 | REQ-MON-060    | TC-I045                             | Covered |
-| REQ-MON-070    | TC-I046                             | Covered |
+| REQ-MON-070    | TC-I046, TC-I113                    | Covered |
 | REQ-MON-080    | TC-I062–I065                        | Covered |
+| REQ-MON-095    | TC-I047, TC-I048                    | Covered |
 | REQ-MON-100    | TC-I047                             | Covered |
-| REQ-MON-110    | TC-I066, TC-I067                    | Covered |
+| REQ-MON-110    | TC-I066, TC-I067, TC-I115           | Covered |
 | REQ-MON-130    | TC-I049                             | Covered |
 | REQ-MON-131    | TC-I050                             | Covered |
 | REQ-MON-140    | TC-I051                             | Covered |
 | REQ-MON-145    | TC-I052                             | Covered |
 | REQ-MON-150    | TC-I048                             | Covered |
-| REQ-MON-160    | TC-I099 (pending implementation)    | Pending |
-| REQ-MON-180    | TC-I100 (pending implementation)    | Pending |
-| REQ-MON-190    | TC-I101 (pending implementation)    | Pending |
+| REQ-MON-160    | TC-I099                             | Covered |
+| REQ-MON-180    | TC-I100                             | Covered |
+| REQ-MON-190    | TC-I101                             | Covered |
 | REQ-REG-010    | TC-I053                             | Covered |
 | REQ-REG-020    | TC-I054, TC-I068                    | Covered |
 | REQ-REG-030    | TC-I055, TC-I083, TC-I084, TC-I087  | Covered |
@@ -1226,7 +1260,7 @@ for full descriptions.
 | REQ-REG-051    | TC-I057                             | Covered |
 | REQ-REG-060    | TC-I058                             | Covered |
 | REQ-REG-070    | TC-I059                             | Covered |
-| REQ-XC-ID-010  | TC-I010 (dcm-instance-id label), TC-I009 (metadata.name as Deployment name) | Covered |
+| REQ-XC-ID-010  | TC-I010 (dcm.project/dcm-instance-id label), TC-I009 (metadata.name as Deployment name) | Covered |
 | REQ-XC-ID-020  | TC-I028, TC-I069                    | Covered |
 | REQ-XC-LBL-010 | TC-I010, TC-I027, TC-I070           | Covered |
 | REQ-XC-ERR-010 | TC-I008                             | Covered |
@@ -1234,7 +1268,7 @@ for full descriptions.
 | REQ-XC-LOG-010 | TC-I006, TC-I007                    | Covered |
 | REQ-XC-LOG-020 | TC-I006, TC-I007 (INFO), TC-I057 (ERROR) | Covered |
 
-**Total:** 94 integration test cases (including 2 E2E placeholders, 3 pending
+**Total:** 96 integration test cases (including 2 E2E placeholders, 3 pending
 monitoring implementation) covering 77 requirements at integration level.
 
 > Requirements not listed above (REQ-HTTP-050–070, REQ-HLT-010–040,
@@ -1257,8 +1291,8 @@ by integration tests in this plan:
 | TC-U028 | Memory unit conversion | TC-I013 |
 | TC-U029 | Pod phase → DCM status | TC-I044, TC-I062, TC-I063, TC-I064 |
 | TC-U030 | Pod Succeeded ignored | TC-I065 |
-| TC-U036 | CloudEvent v1.0 structure | TC-I047 |
-| TC-U037 | FAILED event includes reason | TC-I048 |
+| TC-U036 | CloudEvent v1.0 structure (source, type, data.id) | TC-I047 |
+| TC-U037 | FAILED event includes reason and instance ID | TC-I048 |
 | TC-U038 | Debounce within window | TC-I066 |
 | TC-U039 | Events after debounce window | TC-I067 |
 | TC-U040 | Instance ID extraction | TC-I043, TC-I044 |

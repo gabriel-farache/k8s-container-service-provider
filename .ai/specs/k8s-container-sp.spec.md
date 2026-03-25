@@ -532,7 +532,7 @@ topic 5).
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
 | REQ-K8S-010 | The SP MUST create a Kubernetes Deployment with replicas=1 for each container creation request | MUST | DD-010 |
-| REQ-K8S-020 | All created resources (Deployment, Service) MUST carry DCM labels: `managed-by=dcm`, `dcm-instance-id=<containerId>`, `dcm-service-type=container` | MUST | SC-004 |
+| REQ-K8S-020 | All created resources (Deployment, Service) MUST carry DCM labels: `dcm.project/managed-by=dcm`, `dcm.project/dcm-instance-id=<containerId>`, `dcm.project/dcm-service-type=container` | MUST | SC-004 |
 | REQ-K8S-030 | The Deployment container spec MUST use `image.reference` as the container image | MUST | |
 | REQ-K8S-040 | Container CPU resources MUST be mapped to K8s resource requests and limits | MUST | DD-100 |
 | REQ-K8S-050 | Container memory resources MUST be converted from schema format (MB/GB/TB) to K8s format (Mi/Gi/Ti) | MUST | DD-090 |
@@ -682,9 +682,9 @@ topic 5).
 - **Given** any resource is created
 - **When** the resource is applied to the cluster
 - **Then** the following labels MUST be set:
-  - `managed-by`: `dcm`
-  - `dcm-instance-id`: `<containerId>`
-  - `dcm-service-type`: `container`
+  - `dcm.project/managed-by`: `dcm`
+  - `dcm.project/dcm-instance-id`: `<containerId>`
+  - `dcm.project/dcm-service-type`: `container`
 
 ##### AC-K8S-030: Image mapping
 
@@ -883,9 +883,9 @@ topic 5).
 - **Given** a Service is created for container "abc-123"
 - **When** the Service is applied
 - **Then** the Service MUST have labels:
-  - `managed-by`: `dcm`
-  - `dcm-instance-id`: `abc-123`
-  - `dcm-service-type`: `container`
+  - `dcm.project/managed-by`: `dcm`
+  - `dcm.project/dcm-instance-id`: `abc-123`
+  - `dcm.project/dcm-service-type`: `container`
 
 ##### AC-K8S-280: Rolling update pod selection
 
@@ -911,14 +911,14 @@ topic 5).
 ##### AC-K8S-300a: Get conflict for multiple Deployments
 
 - **Validates:** REQ-K8S-300
-- **Given** two Deployments share the same `dcm-instance-id` label
+- **Given** two Deployments share the same `dcm.project/dcm-instance-id` label
 - **When** `Get` is called with that instance ID
 - **Then** a ConflictError MUST be returned
 
 ##### AC-K8S-300b: Delete conflict for multiple Deployments
 
 - **Validates:** REQ-K8S-300
-- **Given** two Deployments share the same `dcm-instance-id` label
+- **Given** two Deployments share the same `dcm.project/dcm-instance-id` label
 - **When** `Delete` is called with that instance ID
 - **Then** a ConflictError MUST be returned
 
@@ -937,8 +937,9 @@ Watch Kubernetes Deployments and Pods via indexed resource watchers. Reconcile
 status from both resource types. Publish status updates to DCM via CloudEvents
 over NATS.
 
-Out of scope: NATS JetStream/persistence (at-most-once delivery for v1),
-message acknowledgment/retry, historical event replay.
+Out of scope: JetStream publish semantics on the SP side (stream management
+is the consumer's responsibility; the SP publishes to a plain NATS subject),
+historical event replay.
 
 #### Requirements
 
@@ -946,16 +947,17 @@ message acknowledgment/retry, historical event replay.
 |----|-------------|----------|-------|
 | REQ-MON-010 | The SP MUST watch Deployment resources in the configured namespace using an indexed cache | MUST | |
 | REQ-MON-020 | The SP MUST watch Pod resources in the configured namespace using an indexed cache | MUST | |
-| REQ-MON-030 | Both resource watchers MUST filter resources using label selector `managed-by=dcm,dcm-service-type=container` | MUST | |
-| REQ-MON-040 | Both resource watchers MUST maintain a secondary index on the `dcm-instance-id` label to enable fast lookups | MUST | |
-| REQ-MON-050 | When a Pod exists for a container instance, the Pod status MUST take precedence over the Deployment status | MUST | |
+| REQ-MON-030 | Both resource watchers MUST filter resources using label selector `dcm.project/managed-by=dcm,dcm.project/dcm-service-type=container` | MUST | |
+| REQ-MON-040 | Both resource watchers MUST maintain a secondary index on the `dcm.project/dcm-instance-id` label to enable fast lookups | MUST | |
+| REQ-MON-050 | When a Pod exists for a container instance, the Pod status MUST take precedence over the Deployment status. When multiple Pods exist for the same instance ID (e.g., during rolling updates), the Pod with the most concerning phase (Failed > Unknown > Pending > Running > Succeeded) takes precedence. | MUST | |
 | REQ-MON-060 | When a Deployment exists but no Pod exists, the Deployment status MUST be used (PENDING if Available=False; FAILED if ReplicaFailure=True or Replicas=0) | MUST | SC-007 |
 | REQ-MON-070 | When neither Deployment nor Pod exists for a previously tracked instance, the status MUST be DELETED | MUST | |
 | REQ-MON-080 | Status reconciliation MUST follow the status mapping table | MUST | DD-020 |
-| REQ-MON-090 | Status updates MUST be published as CloudEvents v1.0 events with required fields (`id`, `source`, `type`, `subject`, `data`) | MUST | |
-| REQ-MON-100 | Status events MUST be published to NATS on the subject `dcm.providers.{providerName}.container.instances.{instanceId}.status` | MUST | DD-060 |
+| REQ-MON-090 | Status updates MUST be published as CloudEvents v1.0 events. The required CloudEvents attributes (`id`, `source`, `type`, `specversion`, `datacontenttype`) MUST be set. The `source` MUST be `dcm/providers/{providerName}`. The `type` MUST be `dcm.status.container`. The `datacontenttype` MUST be `application/json`. The data payload MUST contain instance status | MUST | DD-060, DD-110 |
+| REQ-MON-095 | The CloudEvent data payload MUST include an `id` field containing the DCM instance ID, a `status` field with the DCM status string, and a `message` field with a human-readable description | MUST | DD-110 |
+| REQ-MON-100 | Status events MUST be published to NATS on the subject `dcm.container` | MUST | DD-060 |
 | REQ-MON-110 | The SP MUST debounce rapid status oscillations to avoid flooding the messaging system | MUST | |
-| REQ-MON-120 | The instance ID MUST be extracted from the `dcm-instance-id` label on the resource | MUST | |
+| REQ-MON-120 | The instance ID MUST be extracted from the `dcm.project/dcm-instance-id` label on the resource | MUST | |
 | REQ-MON-130 | Resource watchers MUST be started as asynchronous background tasks after the HTTP server is ready | MUST | |
 | REQ-MON-131 | Resource watchers MUST be stopped during graceful shutdown | MUST | |
 | REQ-MON-140 | Resource watchers MUST periodically re-reconcile status for all tracked resources at the configured resync interval | MUST | |
@@ -964,7 +966,7 @@ message acknowledgment/retry, historical event replay.
 | REQ-MON-160 | Resource watchers MUST automatically reconnect after API server disconnection and resume processing events without manual intervention | MUST | |
 | REQ-MON-170 | Status event publishing MUST be decoupled from the transport mechanism to allow alternative implementations | MUST | |
 | REQ-MON-180 | Status event publishing MUST retry with exponential backoff on transient NATS failures, up to a configurable maximum number of attempts | MUST | |
-| REQ-MON-190 | When NATS is unavailable, the SP MUST log the failure and continue operating without crashing | MUST | |
+| REQ-MON-190 | When NATS is unavailable, the SP MUST log the failure and continue operating without crashing. This applies both at startup and during runtime. The NATS connection MUST use unlimited reconnection attempts with disconnect/reconnect event logging. | MUST | DD-130 |
 
 **Status mapping (REQ-MON-080):**
 
@@ -986,9 +988,12 @@ message acknowledgment/retry, historical event replay.
 > of scope for v1. This may be revisited in a later version if Jobs or similar
 > resource types are supported.
 
-> **Note:** The `type`/`subject` split follows the K8s Container SP enhancement.
-> The SP Status Reporting enhancement uses a different convention (full path in
-> `type`). The K8s Container SP enhancement is authoritative for this SP.
+> **Note:** The CloudEvent format follows the updated SP Status Reporting
+> enhancement ([enhancements#37](https://github.com/dcm-project/enhancements/pull/37)).
+> Instance identity is carried in the data payload's `id` field, not in the
+> NATS subject or CloudEvent attributes. Known discrepancies between the
+> enhancement doc and the SPRM implementation are tracked in
+> `.ai/exploration/2026-03-23-14-00-status-monitoring-pr-discrepancies.md`.
 
 #### Configuration Introduced
 
@@ -1026,7 +1031,7 @@ message acknowledgment/retry, historical event replay.
 
 - **Validates:** REQ-MON-040
 - **Given** a resource watcher receives a resource event
-- **When** the resource has label `dcm-instance-id=abc-123`
+- **When** the resource has label `dcm.project/dcm-instance-id=abc-123`
 - **Then** the resource MUST be indexable by instance ID "abc-123"
 
 ##### AC-MON-050: Status reconciliation - Pod priority
@@ -1035,6 +1040,13 @@ message acknowledgment/retry, historical event replay.
 - **Given** both a Deployment and Pod exist for instance "abc-123"
 - **When** a status event is reconciled
 - **Then** the DCM status MUST be derived from Pod.Status.Phase
+
+##### AC-MON-051: Status reconciliation - Multi-pod worst-phase selection
+
+- **Validates:** REQ-MON-050
+- **Given** multiple Pods exist for instance "abc-123" (e.g., during a rolling update)
+- **When** a status event is reconciled
+- **Then** the Pod with the most concerning phase (Failed > Unknown > Pending > Running > Succeeded) MUST take precedence
 
 ##### AC-MON-060: Status reconciliation - Deployment fallback
 
@@ -1054,23 +1066,32 @@ message acknowledgment/retry, historical event replay.
 
 ##### AC-MON-080: CloudEvents format
 
-- **Validates:** REQ-MON-090
-- **Given** a status change is detected
+- **Validates:** REQ-MON-090, REQ-MON-095
+- **Given** a status change is detected for instance "abc-123" with provider name "k8s-sp"
 - **When** the event is published
 - **Then** the CloudEvent MUST include:
-  - `id`: unique event identifier
-  - `source`: MUST be set to the `provider.name` configuration value
-  - `type`: `dcm.providers.{providerName}.status.update`
-  - `subject`: `dcm.providers.{providerName}.container.instances.{instanceId}.status`
-  - `data`: `{"status": "<DCM_STATUS>", "message": "<description>"}`
+  - `specversion`: `"1.0"`
+  - `id`: unique event identifier (e.g., UUID)
+  - `source`: `"dcm/providers/k8s-sp"` (derived as `dcm/providers/{providerName}`)
+  - `type`: `"dcm.status.container"`
+  - `datacontenttype`: `"application/json"`
+  - `data`: `{"id": "abc-123", "status": "<DCM_STATUS>", "message": "<description>"}`
+
+##### AC-MON-085: Data payload contains instance ID
+
+- **Validates:** REQ-MON-095
+- **Given** a status change is detected for instance "abc-123"
+- **When** the CloudEvent data payload is constructed
+- **Then** the `id` field MUST be `"abc-123"` (the DCM instance ID)
+- **And** the `status` field MUST be the DCM status string
+- **And** the `message` field MUST be a human-readable description
 
 ##### AC-MON-090: NATS publishing
 
 - **Validates:** REQ-MON-100
 - **Given** a status change is detected for instance "abc-123"
-- **And** the provider name is "k8s-container-sp"
 - **When** the event is published
-- **Then** it MUST be published to NATS subject: `dcm.providers.k8s-container-sp.container.instances.abc-123.status`
+- **Then** it MUST be published to NATS subject: `dcm.container`
 
 ##### AC-MON-100: Debounce logic
 
@@ -1078,6 +1099,13 @@ message acknowledgment/retry, historical event replay.
 - **Given** multiple status changes occur within the debounce interval
 - **When** events are processed
 - **Then** only the last status within the debounce window MUST be published
+
+##### AC-MON-101: Per-instance debounce isolation
+
+- **Validates:** REQ-MON-110
+- **Given** status changes occur within the debounce interval for two different instances
+- **When** events are processed
+- **Then** each instance's events MUST be debounced independently — rapid changes for one instance MUST NOT suppress or delay publication for another instance
 
 ##### AC-MON-110: Instance ID extraction
 
@@ -1113,7 +1141,7 @@ message acknowledgment/retry, historical event replay.
 - **Validates:** REQ-MON-145
 - **Given** the SP starts or restarts
 - **When** the resource cache has completed initial synchronization
-- **Then** a status CloudEvent MUST be published for each existing resource with labels `managed-by=dcm` and `dcm-service-type=container`
+- **Then** a status CloudEvent MUST be published for each existing resource with labels `dcm.project/managed-by=dcm` and `dcm.project/dcm-service-type=container`
 - **And** the debounce logic (REQ-MON-110) MUST apply to these initial events
 
 ##### AC-MON-160: Failure message detail
@@ -1278,7 +1306,7 @@ Depends on Topic 1 (HTTP Server).
 
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
-| REQ-XC-ID-010 | Two identifiers MUST be used for container resources: `id` (DCM identifier, used in URL paths and stored as `dcm-instance-id` label) and `metadata.name` (K8s resource name, used as Deployment/Service name) | MUST | |
+| REQ-XC-ID-010 | Two identifiers MUST be used for container resources: `id` (DCM identifier, used in URL paths and stored as `dcm.project/dcm-instance-id` label) and `metadata.name` (K8s resource name, used as Deployment/Service name) | MUST | |
 | REQ-XC-ID-020 | Conflict detection MUST be based on `metadata.name`, not `id`. Both uniqueness constraints apply independently | MUST | SC-001 |
 
 #### Acceptance Criteria
@@ -1288,7 +1316,7 @@ Depends on Topic 1 (HTTP Server).
 - **Validates:** REQ-XC-ID-010
 - **Given** a container is created with id "abc-123" and metadata.name "web-app"
 - **When** the resource is stored
-- **Then** `id` MUST be used in URL paths (`/containers/abc-123`) and as the `dcm-instance-id` label
+- **Then** `id` MUST be used in URL paths (`/containers/abc-123`) and as the `dcm.project/dcm-instance-id` label
 - **And** `metadata.name` MUST be used as the Kubernetes Deployment and Service name
 
 ##### AC-XC-ID-020: Conflict detection based on metadata.name
@@ -1304,15 +1332,15 @@ Depends on Topic 1 (HTTP Server).
 
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
-| REQ-XC-LBL-010 | All Kubernetes resources managed by this SP MUST carry the DCM labels: `managed-by=dcm`, `dcm-instance-id={containerId}`, `dcm-service-type=container` | MUST | SC-004 |
+| REQ-XC-LBL-010 | All Kubernetes resources managed by this SP MUST carry the DCM labels: `dcm.project/managed-by=dcm`, `dcm.project/dcm-instance-id={containerId}`, `dcm.project/dcm-service-type=container` | MUST | SC-004, DD-120 |
 
 **Label convention:**
 
 | Label | Value | Description |
 |-------|-------|-------------|
-| managed-by | dcm | Identifies DCM-managed resources |
-| dcm-instance-id | {containerId} | Links resource to container ID |
-| dcm-service-type | container | Identifies the service type |
+| dcm.project/managed-by | dcm | Identifies DCM-managed resources |
+| dcm.project/dcm-instance-id | {containerId} | Links resource to container ID |
+| dcm.project/dcm-service-type | container | Identifies the service type |
 
 #### Acceptance Criteria
 
@@ -1514,12 +1542,61 @@ the registered endpoint is `{base}/api/v1alpha1/containers`.
 
 ### DD-060: NATS for messaging
 
-**Decision:** Use NATS for CloudEvents status reporting.
+**Decision:** Use NATS for CloudEvents status reporting. The SP publishes to a
+plain NATS subject (`dcm.container`). The consumer (SPRM) configures a JetStream
+stream that captures messages on `dcm.*` subjects, providing at-least-once
+delivery on the consumer side. From the SP's perspective, publishing is
+at-most-once (fire-and-forget to the NATS subject).
 
-**Rationale:** Lightweight, fire-and-forget publishing aligns with SP status
-reporting architecture. At-most-once delivery is acceptable for v1.
+**Rationale:** The SP does not manage JetStream streams or consumers — that is the
+SPRM's responsibility. This keeps the SP simple and decoupled from JetStream
+configuration. If NATS is available, messages are delivered; if not, the SP's
+retry mechanism (REQ-MON-180) handles transient failures.
 
 **Related requirements:** REQ-MON-100
+
+### DD-110: Instance ID in CloudEvent data payload
+
+**Decision:** The DCM instance ID is carried in the CloudEvent data payload's
+`id` field, not in the NATS subject or CloudEvent envelope attributes.
+
+**Rationale:** The NATS subject uses a simple service-type-based hierarchy
+(`dcm.container`) without per-instance subjects. This allows a single wildcard
+subscription (`dcm.*`) on the consumer side. The instance ID is extracted from
+the data payload by the consumer. This aligns with the SP Status Reporting
+enhancement ([enhancements#37](https://github.com/dcm-project/enhancements/pull/37))
+and the SPRM implementation
+([service-provider-manager#33](https://github.com/dcm-project/service-provider-manager/pull/33)).
+
+**Related requirements:** REQ-MON-095, REQ-MON-100
+
+### DD-120: Namespaced label keys
+
+**Decision:** All DCM label keys use the `dcm.project/` namespace prefix
+(e.g., `dcm.project/managed-by`, `dcm.project/dcm-instance-id`,
+`dcm.project/dcm-service-type`).
+
+**Rationale:** Aligns with the kubevirt SP label convention. Namespaced labels
+follow Kubernetes best practices by avoiding collisions with user-defined labels
+and clearly identifying the owner of each label. The `dcm.project` DNS subdomain
+is a valid Kubernetes label prefix.
+
+**Related requirements:** REQ-K8S-020, REQ-XC-LBL-010
+
+### DD-130: NATS startup resilience
+
+**Decision:** The NATS connection uses `RetryOnFailedConnect(true)` and
+`MaxReconnects(-1)` so the SP can start even when NATS is unreachable.
+Disconnect and reconnect events are logged via `slog`.
+
+**Rationale:** REQ-MON-190 requires the SP to continue operating without
+crashing when NATS is unavailable. This extends to startup: the SP should serve
+HTTP requests while NATS connects in the background. The `RetryOnFailedConnect`
+option makes `nats.Connect` return a valid connection object immediately,
+allowing the SP to proceed with HTTP server startup. Subsequent publish failures
+are handled by the existing retry mechanism (REQ-MON-180).
+
+**Related requirements:** REQ-MON-190
 
 ### DD-070: Health response schema
 
@@ -1577,7 +1654,7 @@ gap analysis. Each is rooted in an existing requirement or the OpenAPI contract.
 **Related requirements:** REQ-API-080, REQ-K8S-170, REQ-XC-ID-020
 
 A Create request MUST be rejected with 409 Conflict when the supplied
-`id` (via `?id=`) matches the `dcm-instance-id` of an existing container, in
+`id` (via `?id=`) matches the `dcm.project/dcm-instance-id` of an existing container, in
 addition to the existing `metadata.name` conflict check. Both uniqueness
 constraints apply independently.
 
@@ -1604,7 +1681,7 @@ Deployment MUST be rolled back (deleted).
 User-specified `metadata.labels` from the Container request body MUST be
 applied to the created Kubernetes resources (Deployment, Service, Pod template).
 However, if any user-specified label key collides with a DCM-reserved label
-(`managed-by`, `dcm-instance-id`, `dcm-service-type`), the Create request MUST
+(`dcm.project/managed-by`, `dcm.project/dcm-instance-id`, `dcm.project/dcm-service-type`), the Create request MUST
 be rejected with 400 Bad Request.
 
 ### SC-005: Empty or absent `network.ports`
@@ -1644,7 +1721,7 @@ conditions (unless ReplicaFailure=True or Replicas=0, which map to FAILED).
 | REQ-API-NNN | 4.3: Container API Handlers | 21 |
 | REQ-STR-NNN | 4.4: Store Interface | 8 |
 | REQ-K8S-NNN | 4.4: Kubernetes Integration | 29 |
-| REQ-MON-NNN | 4.5: Status Monitoring | 21 |
+| REQ-MON-NNN | 4.5: Status Monitoring | 22 |
 | REQ-REG-NNN | 4.6: DCM Registration | 9 |
 | REQ-XC-ID-NNN | 5.1: Resource Identity | 2 |
 | REQ-XC-LBL-NNN | 5.2: Resource Labeling | 1 |

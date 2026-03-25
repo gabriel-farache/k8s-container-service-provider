@@ -351,9 +351,9 @@ var _ = Describe("Container API Handlers", func() {
 					Expect(ok).To(BeTrue(), "expected 400 for reserved label %q", label)
 					Expect(errResp.Type).To(Equal(v1alpha1.INVALIDARGUMENT))
 				},
-				Entry("managed-by", "managed-by"),
-				Entry("dcm-instance-id", "dcm-instance-id"),
-				Entry("dcm-service-type", "dcm-service-type"),
+				Entry("dcm.project/managed-by", "dcm.project/managed-by"),
+				Entry("dcm.project/dcm-instance-id", "dcm.project/dcm-instance-id"),
+				Entry("dcm.project/dcm-service-type", "dcm.project/dcm-service-type"),
 			)
 		})
 	})

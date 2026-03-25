@@ -3,10 +3,10 @@
 ## Overview
 
 - **Related Spec:** .ai/specs/k8s-container-sp.spec.md
-- **Related Requirements:** REQ-HTTP-050, REQ-HTTP-091, REQ-HTTP-090, REQ-HLT-010–040, REQ-API-010–180, REQ-STR-010, REQ-STR-080, REQ-K8S-040, REQ-K8S-050, REQ-K8S-230, REQ-MON-040–090, REQ-MON-110–120, REQ-MON-150, REQ-MON-170, REQ-REG-020, REQ-XC-ID-010–020, REQ-XC-ERR-010–040, REQ-XC-CFG-010–020
+- **Related Requirements:** REQ-HTTP-050, REQ-HTTP-091, REQ-HTTP-090, REQ-HLT-010–040, REQ-API-010–180, REQ-STR-010, REQ-STR-080, REQ-K8S-040, REQ-K8S-050, REQ-K8S-230, REQ-MON-040–095, REQ-MON-110–120, REQ-MON-150, REQ-MON-170, REQ-REG-020, REQ-XC-ID-010–020, REQ-XC-ERR-010–040, REQ-XC-CFG-010–020
 - **Framework:** Ginkgo v2 + Gomega
 - **Created:** 2026-02-17
-- **Last Updated:** 2026-03-10 (cross-SP alignment: added TC-U070, TC-U071, TC-U072; mapped existing TCs to new REQs; updated coverage matrix)
+- **Last Updated:** 2026-03-23 (status monitoring alignment: updated TC-U036, TC-U037 for new CloudEvent format per enhancements#37 and service-provider-manager#33; added REQ-MON-095 coverage)
 
 Unit tests verify individual components in isolation. All external dependencies
 (ContainerRepository, K8s client, NATS, HTTP server) are replaced with mocks,
@@ -267,7 +267,7 @@ construction, debounce, indexer functions, registration payload builders) are
 - **Requirement:** REQ-API-080 (extended to `id` uniqueness — see SC-001)
 - **Priority:** High
 - **Type:** Unit
-- **Given:** Mock repository returns a conflict error when the provided `id` matches an existing container's `dcm-instance-id`
+- **Given:** Mock repository returns a conflict error when the provided `id` matches an existing container's `dcm.project/dcm-instance-id`
 - **When:** `POST /api/v1alpha1/containers?id=existing-id` is called
 - **Then:** HTTP status is `409` AND body is RFC 7807 error with type `ALREADY_EXISTS`
 
@@ -303,9 +303,9 @@ construction, debounce, indexer functions, registration payload builders) are
 - **Type:** Unit (table-driven)
 - **Given:** Request bodies with `metadata.labels` containing reserved DCM label keys
 - **When:** `POST` is called for each:
-  - `metadata.labels: {"managed-by": "custom"}`
-  - `metadata.labels: {"dcm-instance-id": "custom-id"}`
-  - `metadata.labels: {"dcm-service-type": "custom-type"}`
+  - `metadata.labels: {"dcm.project/managed-by": "custom"}`
+  - `metadata.labels: {"dcm.project/dcm-instance-id": "custom-id"}`
+  - `metadata.labels: {"dcm.project/dcm-service-type": "custom-type"}`
 - **Then:** Each returns HTTP `400` with RFC 7807 error body containing type `INVALID_ARGUMENT`
 
 ### TC-U078: CreateContainer rejects reserved "health" container ID
@@ -532,7 +532,17 @@ dedicated test class or `Describe` block.
 - **Given:** The StatusPublisher interface is defined
 - **When:** A compile-time type assertion of the NATS publisher to StatusPublisher is performed
 - **Then:** The assertion compiles and succeeds
-- **Referenced by:** Pending implementation (monitoring subsystem not yet built)
+- **Referenced by:** `internal/monitoring/helpers_test.go` — `var _ StatusPublisher = (*NATSPublisher)(nil)`
+
+#### TC-U079: Debouncer Stop waits for in-flight publish callbacks
+
+- **Requirement:** REQ-MON-131
+- **AC:** AC-MON-130
+- **Priority:** High
+- **Type:** Unit
+- **Given:** A Debouncer with a blocking publishFn that has started executing
+- **When:** Stop() is called concurrently
+- **Then:** Stop() blocks until the in-flight publishFn completes, and no further publishes occur after Stop() returns
 
 #### TC-U024: ContainerRepository interface is satisfied by implementation
 
@@ -630,27 +640,28 @@ dedicated test class or `Describe` block.
 
 #### TC-U036: CloudEvent has correct v1.0 structure
 
-- **Requirement:** REQ-MON-090
+- **Requirement:** REQ-MON-090, REQ-MON-095
 - **Priority:** High
 - **Type:** Unit
 - **Given:** A status change for instance `"abc-123"` with provider name `"k8s-sp"` and status `RUNNING`
 - **When:** A CloudEvent is constructed
 - **Then:**
+  - `specversion` is `"1.0"`
   - `id` is a non-empty unique identifier
-  - `source` is `"k8s-sp"`
-  - `type` is `"dcm.providers.k8s-sp.status.update"`
-  - `subject` is `"dcm.providers.k8s-sp.container.instances.abc-123.status"`
-  - `data` contains `{"status": "RUNNING", "message": "..."}`
+  - `source` is `"dcm/providers/k8s-sp"`
+  - `type` is `"dcm.status.container"`
+  - `datacontenttype` is `"application/json"`
+  - `data` contains `{"id": "abc-123", "status": "RUNNING", "message": "..."}`
 - **Referenced by:** TC-I047 (NATS publishing verifies CloudEvent structure)
 
 #### TC-U037: FAILED CloudEvent includes failure reason in message
 
-- **Requirement:** REQ-MON-150
+- **Requirement:** REQ-MON-150, REQ-MON-095
 - **Priority:** High
 - **Type:** Unit
-- **Given:** A Pod with failed container status reason `"CrashLoopBackOff"`
+- **Given:** A Pod with failed container status reason `"CrashLoopBackOff"` for instance `"abc-123"`
 - **When:** A FAILED status CloudEvent is constructed
-- **Then:** The `data.message` field includes `"CrashLoopBackOff"`
+- **Then:** The `data.id` field is `"abc-123"` AND `data.status` is `"FAILED"` AND `data.message` includes `"CrashLoopBackOff"`
 - **Referenced by:** TC-I048 (FAILED NATS event includes failure reason)
 
 ### Debounce Logic
@@ -677,35 +688,35 @@ dedicated test class or `Describe` block.
 
 ### Instance ID & Indexer
 
-#### TC-U040: Instance ID extracted from dcm-instance-id label
+#### TC-U040: Instance ID extracted from dcm.project/dcm-instance-id label
 
 - **Requirement:** REQ-MON-120
 - **Priority:** High
 - **Type:** Unit
-- **Given:** A Kubernetes resource with label `dcm-instance-id="abc-123"`
+- **Given:** A Kubernetes resource with label `dcm.project/dcm-instance-id="abc-123"`
 - **When:** Instance ID extraction is performed
 - **Then:** The result is `"abc-123"`
 - **Referenced by:** TC-I043 (informer indexer integration), TC-I044 (Pod update triggers reconciliation)
 
-#### TC-U041: Missing dcm-instance-id label handled gracefully
+#### TC-U041: Missing dcm.project/dcm-instance-id label handled gracefully
 
 - **Requirement:** REQ-MON-120
 - **Priority:** Medium
 - **Type:** Unit
-- **Given:** A Kubernetes resource without the `dcm-instance-id` label
+- **Given:** A Kubernetes resource without the `dcm.project/dcm-instance-id` label
 - **When:** Instance ID extraction is attempted
 - **Then:** An empty string or error is returned (resource is skipped, not panicked)
 - **Referenced by:** TC-I042 (informers filter non-DCM resources)
 
-#### TC-U042: Indexer function returns dcm-instance-id value
+#### TC-U042: Indexer function returns dcm.project/dcm-instance-id value
 
 - **Requirement:** REQ-MON-040
 - **Priority:** High
 - **Type:** Unit
-- **Given:** A Kubernetes object with label `dcm-instance-id="abc-123"`
+- **Given:** A Kubernetes object with label `dcm.project/dcm-instance-id="abc-123"`
 - **When:** The custom indexer function is called
 - **Then:** It returns `["abc-123"]`
-- **Referenced by:** TC-I043 (informer indexer enables lookup by dcm-instance-id)
+- **Referenced by:** TC-I043 (informer indexer enables lookup by dcm.project/dcm-instance-id)
 
 ### OpenAPI Contract Enforcement
 
@@ -954,6 +965,7 @@ dedicated test class or `Describe` block.
 | REQ-MON-070   | TC-U035                           | Covered |
 | REQ-MON-080   | TC-U029–TC-U035                   | Covered |
 | REQ-MON-090   | TC-U036 (via TC-I047)             | Covered |
+| REQ-MON-095   | TC-U036 (via TC-I047), TC-U037 (via TC-I048) | Covered |
 | REQ-MON-110   | TC-U038 (via TC-I066), TC-U039 (via TC-I067) | Covered |
 | REQ-MON-120   | TC-U040 (via TC-I043/I044), TC-U041 (via TC-I042) | Covered |
 | REQ-MON-150   | TC-U037 (via TC-I048)             | Covered |
@@ -967,15 +979,17 @@ dedicated test class or `Describe` block.
 | REQ-REG-070   | TC-U061                           | Covered |
 | REQ-XC-CFG-010| TC-U002, TC-U004, TC-U063         | Covered |
 | REQ-XC-CFG-020| TC-U063                           | Covered |
-| REQ-MON-170   | TC-U072 (pending implementation)  | Pending |
+| REQ-MON-131   | TC-U079                           | Covered |
+| REQ-MON-170   | TC-U072, TC-U079                  | Covered |
 
-**Total:** 72 test case IDs (2 retired: TC-U065, TC-U066) — 41 in behavioural
+**Total:** 73 test case IDs (2 retired: TC-U065, TC-U066) — 42 in behavioural
 test classes, 31 in the utility index (tested transitively through higher-level
 behavioural and integration tests).
 
 > Requirements not listed above (REQ-HTTP-010–040, REQ-HTTP-080,
 > REQ-STR-020–070, REQ-K8S-010–270 excluding 040/050/230, REQ-MON-010–030,
-> REQ-MON-100, REQ-MON-130–145, REQ-REG-010, REQ-REG-030–070,
+> REQ-MON-100, REQ-MON-130–145, REQ-MON-160, REQ-MON-180–190,
+> REQ-REG-010, REQ-REG-030–070,
 > REQ-XC-LBL-010, REQ-XC-LOG-010–020) are covered in the integration test
 > plan.
 

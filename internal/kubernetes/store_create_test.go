@@ -47,9 +47,9 @@ var _ = Describe("K8s Store", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			expectedLabels := map[string]string{
-				"managed-by":       "dcm",
-				"dcm-instance-id":  "abc-123",
-				"dcm-service-type": "container",
+				"dcm.project/managed-by":       "dcm",
+				"dcm.project/dcm-instance-id":  "abc-123",
+				"dcm.project/dcm-service-type": "container",
 			}
 
 			for k, v := range expectedLabels {
@@ -230,8 +230,8 @@ var _ = Describe("K8s Store", func() {
 			Expect(deploy.Labels).To(HaveKeyWithValue("env", "staging"))
 			Expect(deploy.Labels).To(HaveKeyWithValue("team", "platform"))
 			// DCM labels also present
-			Expect(deploy.Labels).To(HaveKeyWithValue("managed-by", "dcm"))
-			Expect(deploy.Labels).To(HaveKeyWithValue("dcm-instance-id", "test-id-070"))
+			Expect(deploy.Labels).To(HaveKeyWithValue("dcm.project/managed-by", "dcm"))
+			Expect(deploy.Labels).To(HaveKeyWithValue("dcm.project/dcm-instance-id", "test-id-070"))
 
 			// Same on pod template
 			Expect(deploy.Spec.Template.Labels).To(HaveKeyWithValue("env", "staging"))

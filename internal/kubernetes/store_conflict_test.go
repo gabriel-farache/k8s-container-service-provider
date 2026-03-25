@@ -40,7 +40,7 @@ var _ = Describe("K8s Store", func() {
 			// Verify existing Deployment is not modified
 			deploy, getErr := client.AppsV1().Deployments("default").Get(context.Background(), "web-app", metav1.GetOptions{})
 			Expect(getErr).NotTo(HaveOccurred())
-			Expect(deploy.Labels["dcm-instance-id"]).To(Equal("original-id"))
+			Expect(deploy.Labels["dcm.project/dcm-instance-id"]).To(Equal("original-id"))
 		})
 
 		// TC-I029: All resources created in the configured namespace

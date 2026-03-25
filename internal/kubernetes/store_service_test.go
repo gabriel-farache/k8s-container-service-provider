@@ -126,9 +126,9 @@ var _ = Describe("K8s Store", func() {
 			svc, err := client.CoreV1().Services("default").Get(context.Background(), "my-app", metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(svc.Labels).To(HaveKeyWithValue("managed-by", "dcm"))
-			Expect(svc.Labels).To(HaveKeyWithValue("dcm-instance-id", "abc-123"))
-			Expect(svc.Labels).To(HaveKeyWithValue("dcm-service-type", "container"))
+			Expect(svc.Labels).To(HaveKeyWithValue("dcm.project/managed-by", "dcm"))
+			Expect(svc.Labels).To(HaveKeyWithValue("dcm.project/dcm-instance-id", "abc-123"))
+			Expect(svc.Labels).To(HaveKeyWithValue("dcm.project/dcm-service-type", "container"))
 		})
 
 		// TC-I074: External port uses DefaultServiceType=NodePort
