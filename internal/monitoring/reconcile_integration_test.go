@@ -27,17 +27,9 @@ var _ = Describe("Status Monitor", func() {
 			cancel    context.CancelFunc
 		)
 
-		dcmLabels := func(instanceID string) map[string]string {
-			return map[string]string{
-				dcm.LabelManagedBy:   dcm.ValueManagedByDCM,
-				dcm.LabelInstanceID:  instanceID,
-				dcm.LabelServiceType: dcm.ValueServiceType,
-			}
-		}
-
 		createDeployment := func(name, instanceID string) {
 			replicas := int32(1)
-			labels := dcmLabels(instanceID)
+			labels := dcm.Labels(instanceID)
 			_, err := client.AppsV1().Deployments("default").Create(ctx, &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels},
 				Spec: appsv1.DeploymentSpec{
@@ -54,7 +46,7 @@ var _ = Describe("Status Monitor", func() {
 
 		createPod := func(name, instanceID string, phase corev1.PodPhase) {
 			_, err := client.CoreV1().Pods("default").Create(ctx, &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: name, Labels: dcmLabels(instanceID)},
+				ObjectMeta: metav1.ObjectMeta{Name: name, Labels: dcm.Labels(instanceID)},
 				Status:     corev1.PodStatus{Phase: phase},
 			}, metav1.CreateOptions{})
 			Expect(err).NotTo(HaveOccurred())

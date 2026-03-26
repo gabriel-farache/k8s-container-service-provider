@@ -55,12 +55,8 @@ var _ = Describe("Status Monitor", func() {
 			replicas := int32(1)
 			_, err := client.AppsV1().Deployments("default").Create(ctx, &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-deploy",
-					Labels: map[string]string{
-						dcm.LabelManagedBy:   dcm.ValueManagedByDCM,
-						dcm.LabelInstanceID:  "abc-123",
-						dcm.LabelServiceType: dcm.ValueServiceType,
-					},
+					Name:   "test-deploy",
+					Labels: dcm.Labels("abc-123"),
 				},
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &replicas,
@@ -101,12 +97,8 @@ var _ = Describe("Status Monitor", func() {
 
 			_, err := client.CoreV1().Pods("default").Create(ctx, &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-pod",
-					Labels: map[string]string{
-						dcm.LabelManagedBy:   dcm.ValueManagedByDCM,
-						dcm.LabelInstanceID:  "abc-123",
-						dcm.LabelServiceType: dcm.ValueServiceType,
-					},
+					Name:   "test-pod",
+					Labels: dcm.Labels("abc-123"),
 				},
 				Status: corev1.PodStatus{Phase: corev1.PodRunning},
 			}, metav1.CreateOptions{})
@@ -177,12 +169,8 @@ var _ = Describe("Status Monitor", func() {
 				replicas := int32(1)
 				_, err := client.AppsV1().Deployments("default").Create(ctx, &appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "deploy-" + id,
-						Labels: map[string]string{
-							dcm.LabelManagedBy:   dcm.ValueManagedByDCM,
-							dcm.LabelInstanceID:  id,
-							dcm.LabelServiceType: dcm.ValueServiceType,
-						},
+						Name:   "deploy-" + id,
+						Labels: dcm.Labels(id),
 					},
 					Spec: appsv1.DeploymentSpec{
 						Replicas: &replicas,

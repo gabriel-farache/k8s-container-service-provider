@@ -25,14 +25,6 @@ var _ = Describe("Status Monitor", func() {
 			cfg       monitoring.MonitorConfig
 		)
 
-		dcmLabels := func(instanceID string) map[string]string {
-			return map[string]string{
-				dcm.LabelManagedBy:   dcm.ValueManagedByDCM,
-				dcm.LabelInstanceID:  instanceID,
-				dcm.LabelServiceType: dcm.ValueServiceType,
-			}
-		}
-
 		BeforeEach(func() {
 			client = fake.NewClientset()
 			publisher = newMockPublisher()
@@ -50,7 +42,7 @@ var _ = Describe("Status Monitor", func() {
 
 			// Create a resource before Start is called.
 			replicas := int32(1)
-			labels := dcmLabels("abc-123")
+			labels := dcm.Labels("abc-123")
 			_, err := client.AppsV1().Deployments("default").Create(context.Background(), &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "pre-start", Labels: labels},
 				Spec: appsv1.DeploymentSpec{
@@ -102,7 +94,7 @@ var _ = Describe("Status Monitor", func() {
 			eventsBefore := len(publisher.Events())
 
 			replicas := int32(1)
-			labels := dcmLabels("post-stop")
+			labels := dcm.Labels("post-stop")
 			_, err := client.AppsV1().Deployments("default").Create(context.Background(), &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "post-stop", Labels: labels},
 				Spec: appsv1.DeploymentSpec{
@@ -130,7 +122,7 @@ var _ = Describe("Status Monitor", func() {
 
 			// Pre-create a resource so it's in the cache.
 			replicas := int32(1)
-			labels := dcmLabels("resync-test")
+			labels := dcm.Labels("resync-test")
 			_, err := client.AppsV1().Deployments("default").Create(ctx, &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "resync-deploy", Labels: labels},
 				Spec: appsv1.DeploymentSpec{
@@ -162,7 +154,7 @@ var _ = Describe("Status Monitor", func() {
 			// Pre-create 3 DCM-managed resources.
 			for i, id := range []string{"inst-1", "inst-2", "inst-3"} {
 				replicas := int32(1)
-				labels := dcmLabels(id)
+				labels := dcm.Labels(id)
 				name := "deploy-" + string(rune('a'+i))
 				_, err := client.AppsV1().Deployments("default").Create(context.Background(), &appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels},

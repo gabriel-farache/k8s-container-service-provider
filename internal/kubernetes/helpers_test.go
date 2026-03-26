@@ -92,15 +92,6 @@ func containerWithVisiblePorts(visibility v1alpha1.ContainerPortVisibility, port
 	return c
 }
 
-// dcmLabels returns the standard DCM labels for a given instance ID.
-func dcmLabels(instanceID string) map[string]string {
-	return map[string]string{
-		dcm.LabelManagedBy:   dcm.ValueManagedByDCM,
-		dcm.LabelInstanceID:  instanceID,
-		dcm.LabelServiceType: dcm.ValueServiceType,
-	}
-}
-
 // --- Deployment helpers with functional options ---
 
 type fakeDeployOption func(*appsv1.Deployment)
@@ -114,7 +105,7 @@ func withDeploymentStatus(status appsv1.DeploymentStatus) fakeDeployOption {
 }
 
 func createFakeDeployment(client kubernetes.Interface, name, instanceID string, opts ...fakeDeployOption) error {
-	labels := dcmLabels(instanceID)
+	labels := dcm.Labels(instanceID)
 	replicas := int32(1)
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -162,7 +153,7 @@ func withCreationTime(t time.Time) fakePodOption {
 }
 
 func createFakePod(client kubernetes.Interface, name, instanceID string, phase corev1.PodPhase, podIP string, opts ...fakePodOption) error {
-	labels := dcmLabels(instanceID)
+	labels := dcm.Labels(instanceID)
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -197,7 +188,7 @@ func withLoadBalancerIP(ip string) fakeServiceOption {
 }
 
 func createFakeService(client kubernetes.Interface, namespace, name, instanceID string, svcType corev1.ServiceType, ports []int32, opts ...fakeServiceOption) error {
-	labels := dcmLabels(instanceID)
+	labels := dcm.Labels(instanceID)
 	svcPorts := make([]corev1.ServicePort, len(ports))
 	for i, p := range ports {
 		svcPorts[i] = corev1.ServicePort{

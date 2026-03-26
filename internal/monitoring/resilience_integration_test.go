@@ -67,11 +67,7 @@ var _ = Describe("Status Monitor", func() {
 
 			// Create a resource after "reconnection".
 			replicas := int32(1)
-			labels := map[string]string{
-				dcm.LabelManagedBy:   dcm.ValueManagedByDCM,
-				dcm.LabelInstanceID:  "reconnect-test",
-				dcm.LabelServiceType: dcm.ValueServiceType,
-			}
+			labels := dcm.Labels("reconnect-test")
 			_, err := client.AppsV1().Deployments("default").Create(ctx, &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "after-reconnect", Labels: labels},
 				Spec: appsv1.DeploymentSpec{
@@ -121,11 +117,7 @@ var _ = Describe("Status Monitor", func() {
 
 			// Create a resource to trigger a publish.
 			replicas := int32(1)
-			labels := map[string]string{
-				dcm.LabelManagedBy:   dcm.ValueManagedByDCM,
-				dcm.LabelInstanceID:  "retry-test",
-				dcm.LabelServiceType: dcm.ValueServiceType,
-			}
+			labels := dcm.Labels("retry-test")
 			_, err := client.AppsV1().Deployments("default").Create(ctx, &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "retry-deploy", Labels: labels},
 				Spec: appsv1.DeploymentSpec{
@@ -171,11 +163,7 @@ var _ = Describe("Status Monitor", func() {
 
 			// Create a resource that will trigger a publish (which will fail).
 			replicas := int32(1)
-			labels := map[string]string{
-				dcm.LabelManagedBy:   dcm.ValueManagedByDCM,
-				dcm.LabelInstanceID:  "nats-down",
-				dcm.LabelServiceType: dcm.ValueServiceType,
-			}
+			labels := dcm.Labels("nats-down")
 			_, err := client.AppsV1().Deployments("default").Create(ctx, &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "nats-down-deploy", Labels: labels},
 				Spec: appsv1.DeploymentSpec{

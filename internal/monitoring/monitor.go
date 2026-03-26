@@ -38,10 +38,7 @@ func NewStatusMonitor(client kubernetes.Interface, cfg MonitorConfig, publisher 
 
 // Start begins watching for resource changes. It blocks until ctx is cancelled.
 func (m *StatusMonitor) Start(ctx context.Context) error {
-	selector := fmt.Sprintf("%s=%s,%s=%s",
-		dcm.LabelManagedBy, dcm.ValueManagedByDCM,
-		dcm.LabelServiceType, dcm.ValueServiceType,
-	)
+	selector := dcm.Selector()
 
 	factory := informers.NewSharedInformerFactoryWithOptions(
 		m.client,
