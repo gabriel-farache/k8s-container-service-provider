@@ -32,6 +32,23 @@ func NewK8sContainerStore(client kubernetes.Interface, cfg K8sConfig, logger *sl
 	}
 }
 
+// findDeployment looks up the single Deployment for a container instance.
+func (s *K8sContainerStore) findDeployment(ctx context.Context, containerID string) (*appsv1.Deployment, error) {
+	deploys, err := s.client.AppsV1().Deployments(s.cfg.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: instanceSelector(containerID),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(deploys.Items) == 0 {
+		return nil, &store.NotFoundError{ID: containerID}
+	}
+	if len(deploys.Items) > 1 {
+		return nil, &store.ConflictError{Message: fmt.Sprintf("multiple deployments found for container %q", containerID)}
+	}
+	return &deploys.Items[0], nil
+}
+
 // buildContainer reconstructs an API Container from a Deployment and enriches
 // it with runtime data from the cluster.
 func (s *K8sContainerStore) buildContainer(ctx context.Context, deploy *appsv1.Deployment, instanceID string) (*v1alpha1.Container, error) {
