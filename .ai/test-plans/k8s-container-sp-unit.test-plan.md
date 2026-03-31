@@ -650,6 +650,7 @@ dedicated test class or `Describe` block.
   - `id` is a non-empty unique identifier
   - `source` is `"dcm/providers/k8s-sp"`
   - `type` is `"dcm.status.container"`
+  - `subject` is `"dcm.container"`
   - `datacontenttype` is `"application/json"`
   - `data` contains `{"id": "abc-123", "status": "RUNNING", "message": "..."}`
 - **Referenced by:** TC-I047 (NATS publishing verifies CloudEvent structure)

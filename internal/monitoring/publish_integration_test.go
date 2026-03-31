@@ -12,7 +12,7 @@ import (
 var _ = Describe("Status Monitor", func() {
 	Describe("NATS Publishing", func() {
 		It("should construct a valid CloudEvent with correct fields (TC-I047)", func() {
-			data, err := monitoring.NewStatusCloudEvent("k8s-sp", "abc-123", v1alpha1.RUNNING, "Pod is running")
+			data, err := monitoring.NewStatusCloudEvent("dcm.container", "k8s-sp", "abc-123", v1alpha1.RUNNING, "Pod is running")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(data).NotTo(BeNil(), "expected non-nil CloudEvent JSON")
 
@@ -24,6 +24,7 @@ var _ = Describe("Status Monitor", func() {
 			Expect(ce).To(HaveKeyWithValue("source", "dcm/providers/k8s-sp"))
 			Expect(ce).To(HaveKeyWithValue("type", "dcm.status.container"))
 			Expect(ce).To(HaveKeyWithValue("datacontenttype", "application/json"))
+			Expect(ce).To(HaveKeyWithValue("subject", "dcm.container"))
 			Expect(ce).To(HaveKey("id"))
 			Expect(ce).To(HaveKey("time"))
 
@@ -35,7 +36,7 @@ var _ = Describe("Status Monitor", func() {
 		})
 
 		It("should include failure reason in FAILED event message (TC-I048)", func() {
-			data, err := monitoring.NewStatusCloudEvent("k8s-sp", "abc-123", v1alpha1.FAILED, "CrashLoopBackOff")
+			data, err := monitoring.NewStatusCloudEvent("dcm.container", "k8s-sp", "abc-123", v1alpha1.FAILED, "CrashLoopBackOff")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(data).NotTo(BeNil(), "expected non-nil CloudEvent JSON")
 

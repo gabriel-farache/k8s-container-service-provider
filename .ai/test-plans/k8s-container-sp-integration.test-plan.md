@@ -896,6 +896,7 @@ for full descriptions.
 - **Then:** The NATS subject is `"dcm.container"` AND the message is a valid CloudEvent with:
   - `source`: `"dcm/providers/k8s-sp"`
   - `type`: `"dcm.status.container"`
+  - `subject`: `"dcm.container"`
   - `datacontenttype`: `"application/json"`
   - `data.id`: `"abc-123"`
   - `data.status`: `"RUNNING"`

@@ -58,7 +58,7 @@ func NewNATSPublisher(natsURL, providerName string, logger *slog.Logger) (*NATSP
 
 // Publish sends a status event as a CloudEvent to the configured NATS subject.
 func (p *NATSPublisher) Publish(_ context.Context, event StatusEvent) error {
-	data, err := NewStatusCloudEvent(p.providerName, event.InstanceID, event.Status, event.Message)
+	data, err := NewStatusCloudEvent(p.subject, p.providerName, event.InstanceID, event.Status, event.Message)
 	if err != nil {
 		return fmt.Errorf("constructing cloud event: %w", err)
 	}

@@ -953,7 +953,7 @@ historical event replay.
 | REQ-MON-060 | When a Deployment exists but no Pod exists, the Deployment status MUST be used (PENDING if Available=False; FAILED if ReplicaFailure=True or Replicas=0) | MUST | SC-007 |
 | REQ-MON-070 | When neither Deployment nor Pod exists for a previously tracked instance, the status MUST be DELETED | MUST | |
 | REQ-MON-080 | Status reconciliation MUST follow the status mapping table | MUST | DD-020 |
-| REQ-MON-090 | Status updates MUST be published as CloudEvents v1.0 events. The required CloudEvents attributes (`id`, `source`, `type`, `specversion`, `datacontenttype`) MUST be set. The `source` MUST be `dcm/providers/{providerName}`. The `type` MUST be `dcm.status.container`. The `datacontenttype` MUST be `application/json`. The data payload MUST contain instance status | MUST | DD-060, DD-110 |
+| REQ-MON-090 | Status updates MUST be published as CloudEvents v1.0 events. The required CloudEvents attributes (`id`, `source`, `type`, `subject`, `specversion`, `datacontenttype`) MUST be set. The `subject` MUST be `"dcm.container"`. The `source` MUST be `dcm/providers/{providerName}`. The `type` MUST be `dcm.status.container`. The `datacontenttype` MUST be `application/json`. The data payload MUST contain instance status | MUST | DD-060, DD-110 |
 | REQ-MON-095 | The CloudEvent data payload MUST include an `id` field containing the DCM instance ID, a `status` field with the DCM status string, and a `message` field with a human-readable description | MUST | DD-110 |
 | REQ-MON-100 | Status events MUST be published to NATS on the subject `dcm.container` | MUST | DD-060 |
 | REQ-MON-110 | The SP MUST debounce rapid status oscillations to avoid flooding the messaging system | MUST | |
@@ -1074,6 +1074,7 @@ historical event replay.
   - `id`: unique event identifier (e.g., UUID)
   - `source`: `"dcm/providers/k8s-sp"` (derived as `dcm/providers/{providerName}`)
   - `type`: `"dcm.status.container"`
+  - `subject`: `"dcm.container"`
   - `datacontenttype`: `"application/json"`
   - `data`: `{"id": "abc-123", "status": "<DCM_STATUS>", "message": "<description>"}`
 
