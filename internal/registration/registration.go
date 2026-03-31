@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	dcmv1alpha1 "github.com/dcm-project/service-provider-manager/api/v1alpha1"
-	dcmclient "github.com/dcm-project/service-provider-manager/pkg/client"
+	dcmv1alpha1 "github.com/dcm-project/service-provider-manager/api/v1alpha1/provider"
+	dcmclient "github.com/dcm-project/service-provider-manager/pkg/client/provider"
 
 	v1alpha1 "github.com/dcm-project/k8s-container-service-provider/api/v1alpha1"
 	"github.com/dcm-project/k8s-container-service-provider/internal/config"
