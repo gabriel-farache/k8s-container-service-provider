@@ -1000,7 +1000,7 @@ historical event replay.
 | Config Key | Env Var | Default | Description |
 |------------|---------|---------|-------------|
 | nats.url | SP_NATS_URL | (required) | NATS server URL |
-| provider.name | SP_PROVIDER_NAME | (required) | Provider name for CloudEvents |
+| provider.name | SP_NAME | (required) | Provider name for CloudEvents |
 | monitoring.debounceMs | SP_MONITOR_DEBOUNCE_MS | 500 | Debounce interval in milliseconds |
 | monitoring.resyncPeriod | SP_MONITOR_RESYNC_PERIOD | 10m | Informer cache resync period |
 
@@ -1215,12 +1215,12 @@ integration, provider capability updates post-registration.
 
 | Config Key | Env Var | Default | Description |
 |------------|---------|---------|-------------|
-| dcm.registrationUrl | SP_DCM_REGISTRATION_URL | (required) | DCM SP API registration endpoint |
-| provider.name | SP_PROVIDER_NAME | (required) | Provider name |
-| provider.displayName | SP_PROVIDER_DISPLAY_NAME | (optional) | Human-readable name |
-| provider.endpoint | SP_PROVIDER_ENDPOINT | (required) | Externally reachable SP endpoint |
-| provider.region | SP_PROVIDER_REGION | (optional) | Region metadata |
-| provider.zone | SP_PROVIDER_ZONE | (optional) | Zone metadata |
+| dcm.registrationUrl | DCM_REGISTRATION_URL | (required) | DCM SP API registration endpoint |
+| provider.name | SP_NAME | (required) | Provider name |
+| provider.displayName | SP_DISPLAY_NAME | (optional) | Human-readable name |
+| provider.endpoint | SP_ENDPOINT | (required) | Externally reachable SP endpoint |
+| provider.region | SP_REGION | (optional) | Region metadata |
+| provider.zone | SP_ZONE | (optional) | Zone metadata |
 
 #### Acceptance Criteria
 
@@ -1450,7 +1450,7 @@ Depends on Topic 1 (HTTP Server).
 ##### AC-XC-CFG-020: Fail-fast on missing required config
 
 - **Validates:** REQ-XC-CFG-020
-- **Given** a required config value (SP_PROVIDER_NAME, SP_PROVIDER_ENDPOINT, SP_DCM_REGISTRATION_URL, or SP_K8S_EXTERNAL_SVC_TYPE) is absent or empty
+- **Given** a required config value (SP_NAME, SP_ENDPOINT, DCM_REGISTRATION_URL, SP_NATS_URL, or SP_K8S_EXTERNAL_SVC_TYPE) is absent or empty
 - **When** the SP starts
 - **Then** the SP MUST return an error identifying the missing field
 - **And** MUST exit before starting the HTTP server or any subsystem
@@ -1478,14 +1478,14 @@ All configuration is loaded from environment variables.
 | kubernetes.kubeconfig | SP_K8S_KUBECONFIG | (auto) | No | 4 |
 | kubernetes.externalServiceType | SP_K8S_EXTERNAL_SVC_TYPE | - | Yes | 4 |
 | nats.url | SP_NATS_URL | - | Yes | 5 |
-| provider.name | SP_PROVIDER_NAME | - | Yes | 5, 6 |
+| provider.name | SP_NAME | - | Yes | 5, 6 |
 | monitoring.debounceMs | SP_MONITOR_DEBOUNCE_MS | 500 | No | 5 |
 | monitoring.resyncPeriod | SP_MONITOR_RESYNC_PERIOD | 10m | No | 5 |
-| dcm.registrationUrl | SP_DCM_REGISTRATION_URL | - | Yes | 6 |
-| provider.displayName | SP_PROVIDER_DISPLAY_NAME | (optional) | No | 6 |
-| provider.endpoint | SP_PROVIDER_ENDPOINT | - | Yes | 6 |
-| provider.region | SP_PROVIDER_REGION | (optional) | No | 6 |
-| provider.zone | SP_PROVIDER_ZONE | (optional) | No | 6 |
+| dcm.registrationUrl | DCM_REGISTRATION_URL | - | Yes | 6 |
+| provider.displayName | SP_DISPLAY_NAME | (optional) | No | 6 |
+| provider.endpoint | SP_ENDPOINT | - | Yes | 6 |
+| provider.region | SP_REGION | (optional) | No | 6 |
+| provider.zone | SP_ZONE | (optional) | No | 6 |
 
 ---
 
