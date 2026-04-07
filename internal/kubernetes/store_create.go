@@ -38,10 +38,10 @@ func hasExternalPort(ports []v1alpha1.ContainerPort) bool {
 }
 
 // resolveServiceType determines the Kubernetes Service type based on port visibility.
-// If any port is external, use the configured DefaultServiceType; otherwise ClusterIP.
+// If any port is external, use the configured ExternalServiceType; otherwise ClusterIP.
 func resolveServiceType(cfg K8sConfig, ports []v1alpha1.ContainerPort) corev1.ServiceType {
 	if hasExternalPort(ports) {
-		return corev1.ServiceType(cfg.DefaultServiceType)
+		return corev1.ServiceType(cfg.ExternalServiceType)
 	}
 	return corev1.ServiceTypeClusterIP
 }

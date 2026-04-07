@@ -34,9 +34,9 @@ type DCMConfig struct {
 
 // KubernetesConfig holds Kubernetes-specific settings.
 type KubernetesConfig struct {
-	Namespace          string `env:"NAMESPACE"           envDefault:"default"`
-	Kubeconfig         string `env:"KUBECONFIG"`
-	DefaultServiceType string `env:"DEFAULT_SVC_TYPE"     envDefault:"ClusterIP"`
+	Namespace           string `env:"NAMESPACE"            envDefault:"default"`
+	Kubeconfig          string `env:"KUBECONFIG"`
+	ExternalServiceType string `env:"EXTERNAL_SVC_TYPE"` // Must be NodePort or LoadBalancer
 }
 
 // NATSConfig holds NATS connection settings.
@@ -67,5 +67,20 @@ func Load() (*Config, error) {
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("loading configuration: %w", err)
 	}
+	if err := cfg.validate(); err != nil {
+		return nil, fmt.Errorf("loading configuration: %w", err)
+	}
 	return cfg, nil
+}
+
+func (c *Config) validate() error {
+	switch c.Kubernetes.ExternalServiceType {
+	case "LoadBalancer", "NodePort":
+		return nil
+	default:
+		return fmt.Errorf(
+			"invalid SP_K8S_EXTERNAL_SVC_TYPE %q: must be LoadBalancer or NodePort",
+			c.Kubernetes.ExternalServiceType,
+		)
+	}
 }

@@ -46,8 +46,8 @@ var _ = Describe("K8s Store", func() {
 		// TC-I029: All resources created in the configured namespace
 		It("creates all resources in the configured namespace (TC-I029)", func() {
 			cfg := k8sstore.K8sConfig{
-				Namespace:          "production",
-				DefaultServiceType: "ClusterIP",
+				Namespace:           "production",
+				ExternalServiceType: "LoadBalancer",
 			}
 			s, client := newTestStore(cfg)
 			c := containerWithVisiblePorts(v1alpha1.Internal, 8080)

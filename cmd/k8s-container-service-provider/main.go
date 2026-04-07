@@ -62,8 +62,8 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("creating kubernetes client: %w", err)
 	}
 	k8sCfg := k8s.K8sConfig{
-		Namespace:          cfg.Kubernetes.Namespace,
-		DefaultServiceType: cfg.Kubernetes.DefaultServiceType,
+		Namespace:           cfg.Kubernetes.Namespace,
+		ExternalServiceType: cfg.Kubernetes.ExternalServiceType,
 	}
 	store := k8s.NewK8sContainerStore(k8sClient, k8sCfg, logger)
 

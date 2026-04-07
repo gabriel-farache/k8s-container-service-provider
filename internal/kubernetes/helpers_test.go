@@ -32,8 +32,8 @@ func newTestStore(cfg k8sstore.K8sConfig) (*k8sstore.K8sContainerStore, *fake.Cl
 // defaultConfig returns a K8sConfig with reasonable defaults for testing.
 func defaultConfig() k8sstore.K8sConfig {
 	return k8sstore.K8sConfig{
-		Namespace:          "default",
-		DefaultServiceType: "ClusterIP",
+		Namespace:           "default",
+		ExternalServiceType: "LoadBalancer",
 	}
 }
 

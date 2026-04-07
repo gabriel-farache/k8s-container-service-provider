@@ -26,6 +26,7 @@ var _ = Describe("Configuration", func() {
 		_ = os.Unsetenv("DCM_REGISTRATION_URL")
 		_ = os.Unsetenv("SP_NATS_URL")
 		_ = os.Unsetenv("SP_SERVER_REQUEST_TIMEOUT")
+		_ = os.Unsetenv("SP_K8S_EXTERNAL_SVC_TYPE")
 	}
 
 	BeforeEach(func() {
@@ -42,6 +43,7 @@ var _ = Describe("Configuration", func() {
 		_ = os.Setenv("SP_ENDPOINT", "https://test.example.com")
 		_ = os.Setenv("DCM_REGISTRATION_URL", "https://dcm.example.com")
 		_ = os.Setenv("SP_NATS_URL", "nats://test:4222")
+		_ = os.Setenv("SP_K8S_EXTERNAL_SVC_TYPE", "LoadBalancer")
 	}
 
 	// TC-U002: Load configuration from environment variables
@@ -97,9 +99,65 @@ var _ = Describe("Configuration", func() {
 		Expect(cfg).To(BeNil())
 
 		errMsg := err.Error()
+		Expect(errMsg).To(HavePrefix("loading configuration:"))
 		Expect(errMsg).To(ContainSubstring("SP_NAME"))
 		Expect(errMsg).To(ContainSubstring("SP_ENDPOINT"))
 		Expect(errMsg).To(ContainSubstring("DCM_REGISTRATION_URL"))
 		Expect(errMsg).To(ContainSubstring("SP_NATS_URL"))
+	})
+
+	// TC-U082: ExternalServiceType is required at startup
+	It("returns error when SP_K8S_EXTERNAL_SVC_TYPE is not set (TC-U082)", func() {
+		setRequiredEnv()
+		_ = os.Unsetenv("SP_K8S_EXTERNAL_SVC_TYPE")
+
+		cfg, err := config.Load()
+		Expect(err).To(HaveOccurred())
+		Expect(cfg).To(BeNil())
+		Expect(err.Error()).To(ContainSubstring("loading configuration: invalid SP_K8S_EXTERNAL_SVC_TYPE"))
+	})
+
+	// TC-U086: ExternalServiceType rejects empty string
+	It("returns error when SP_K8S_EXTERNAL_SVC_TYPE is empty (TC-U086)", func() {
+		setRequiredEnv()
+		_ = os.Setenv("SP_K8S_EXTERNAL_SVC_TYPE", "")
+
+		cfg, err := config.Load()
+		Expect(err).To(HaveOccurred())
+		Expect(cfg).To(BeNil())
+		Expect(err.Error()).To(ContainSubstring("loading configuration: invalid SP_K8S_EXTERNAL_SVC_TYPE"))
+		Expect(err.Error()).To(ContainSubstring("must be LoadBalancer or NodePort"))
+	})
+
+	// TC-U083: ExternalServiceType rejects invalid values
+	It("returns error when SP_K8S_EXTERNAL_SVC_TYPE is ClusterIP (TC-U083)", func() {
+		setRequiredEnv()
+		_ = os.Setenv("SP_K8S_EXTERNAL_SVC_TYPE", "ClusterIP")
+
+		cfg, err := config.Load()
+		Expect(err).To(HaveOccurred())
+		Expect(cfg).To(BeNil())
+		Expect(err.Error()).To(ContainSubstring("loading configuration: invalid SP_K8S_EXTERNAL_SVC_TYPE"))
+		Expect(err.Error()).To(ContainSubstring("must be LoadBalancer or NodePort"))
+	})
+
+	// TC-U084: ExternalServiceType accepts LoadBalancer
+	It("loads successfully with ExternalServiceType=LoadBalancer (TC-U084)", func() {
+		setRequiredEnv()
+		_ = os.Setenv("SP_K8S_EXTERNAL_SVC_TYPE", "LoadBalancer")
+
+		cfg, err := config.Load()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cfg.Kubernetes.ExternalServiceType).To(Equal("LoadBalancer"))
+	})
+
+	// TC-U085: ExternalServiceType accepts NodePort
+	It("loads successfully with ExternalServiceType=NodePort (TC-U085)", func() {
+		setRequiredEnv()
+		_ = os.Setenv("SP_K8S_EXTERNAL_SVC_TYPE", "NodePort")
+
+		cfg, err := config.Load()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cfg.Kubernetes.ExternalServiceType).To(Equal("NodePort"))
 	})
 })

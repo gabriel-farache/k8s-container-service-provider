@@ -70,10 +70,10 @@ var _ = Describe("K8s Store", func() {
 			Expect(string(svc.Spec.Type)).To(Equal("ClusterIP"))
 		})
 
-		// TC-I024: External port uses DefaultServiceType=LoadBalancer
-		It("uses DefaultServiceType for external port (TC-I024)", func() {
+		// TC-I024: External port uses ExternalServiceType=LoadBalancer
+		It("uses ExternalServiceType for external port (TC-I024)", func() {
 			cfg := defaultConfig()
-			cfg.DefaultServiceType = "LoadBalancer"
+			cfg.ExternalServiceType = "LoadBalancer"
 			s, client := newTestStore(cfg)
 			c := containerWithVisiblePorts(v1alpha1.External, 8080)
 
@@ -131,10 +131,10 @@ var _ = Describe("K8s Store", func() {
 			Expect(svc.Labels).To(HaveKeyWithValue("dcm.project/dcm-service-type", "container"))
 		})
 
-		// TC-I074: External port uses DefaultServiceType=NodePort
-		It("uses NodePort when DefaultServiceType is NodePort (TC-I074)", func() {
+		// TC-I074: External port uses ExternalServiceType=NodePort
+		It("uses NodePort when ExternalServiceType is NodePort (TC-I074)", func() {
 			cfg := defaultConfig()
-			cfg.DefaultServiceType = "NodePort"
+			cfg.ExternalServiceType = "NodePort"
 			s, client := newTestStore(cfg)
 			c := containerWithVisiblePorts(v1alpha1.External, 8080)
 
@@ -168,7 +168,7 @@ var _ = Describe("K8s Store", func() {
 		// TC-I092: Mixed internal+external — external promotes Service type
 		It("promotes Service type when external port present (TC-I092)", func() {
 			cfg := defaultConfig()
-			cfg.DefaultServiceType = "LoadBalancer"
+			cfg.ExternalServiceType = "LoadBalancer"
 			s, client := newTestStore(cfg)
 			c := minimalContainer("my-app")
 			ports := []v1alpha1.ContainerPort{
@@ -210,7 +210,7 @@ var _ = Describe("K8s Store", func() {
 		// TC-I094: GET infers external when Service is LoadBalancer
 		It("infers external visibility when Service is LoadBalancer (TC-I094)", func() {
 			cfg := defaultConfig()
-			cfg.DefaultServiceType = "LoadBalancer"
+			cfg.ExternalServiceType = "LoadBalancer"
 			s, client := newTestStore(cfg)
 			c := containerWithVisiblePorts(v1alpha1.External, 8080)
 
