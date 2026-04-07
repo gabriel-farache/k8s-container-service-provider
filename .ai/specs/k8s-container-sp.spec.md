@@ -543,7 +543,7 @@ topic 5).
 | REQ-K8S-100 | When any port has `visibility` != `none`, a Service MUST be created including all non-none ports | MUST | SC-005 |
 | REQ-K8S-110 | All non-none ports MUST be included in a single Service resource | MUST | |
 | REQ-K8S-120 | When all non-none ports have `visibility=internal`, the Service type MUST be ClusterIP | MUST | |
-| REQ-K8S-125 | When any port has `visibility=external`, the Service type MUST be the configured `defaultServiceType` | MUST | |
+| REQ-K8S-125 | When any port has `visibility=external`, the Service type MUST be the configured `externalServiceType` | MUST | |
 | REQ-K8S-150 | When all ports have `visibility=none` (or no ports exist), no Service MUST be created | MUST | |
 | REQ-K8S-155 | When `network` is provided but `ports` is absent or null, the SP MUST treat it identically to having no ports — no Service is created and no error is returned | MUST | D2 |
 | REQ-K8S-170 | The SP MUST return a conflict error if a Deployment with the same `metadata.name` already exists in the configured namespace | MUST | SC-001 |
@@ -591,7 +591,7 @@ topic 5).
 |------------|---------|---------|-------------|
 | kubernetes.namespace | SP_K8S_NAMESPACE | default | Namespace for all managed resources |
 | kubernetes.kubeconfig | SP_K8S_KUBECONFIG | (auto) | Path to kubeconfig (empty = in-cluster) |
-| kubernetes.defaultServiceType | SP_K8S_DEFAULT_SVC_TYPE | ClusterIP | Default Service type when `external` visibility is used |
+| kubernetes.externalServiceType | SP_K8S_EXTERNAL_SVC_TYPE | - | Service type for `external` visibility (LoadBalancer or NodePort) |
 
 #### Acceptance Criteria - Store Interface
 
@@ -761,11 +761,11 @@ topic 5).
 - **When** the Service is created
 - **Then** the Service type MUST be ClusterIP
 
-##### AC-K8S-125: Service type - external port uses defaultServiceType
+##### AC-K8S-125: Service type - external port uses externalServiceType
 
 - **Validates:** REQ-K8S-125
 - **Given** at least one port has `visibility=external`
-- **And** SP configuration has defaultServiceType="LoadBalancer"
+- **And** SP configuration has externalServiceType="LoadBalancer"
 - **When** the Service is created
 - **Then** the Service type MUST be LoadBalancer
 
@@ -1436,6 +1436,7 @@ Depends on Topic 1 (HTTP Server).
 |----|-------------|----------|-------|
 | REQ-XC-CFG-010 | All configuration MUST be loadable from environment variables | MUST | |
 | REQ-XC-CFG-020 | The SP MUST fail fast on startup when required configuration values are absent or empty, returning an error before starting any subsystem | MUST | |
+| REQ-XC-CFG-030 | SP_K8S_EXTERNAL_SVC_TYPE is required and MUST be one of `LoadBalancer` or `NodePort`. The SP MUST fail fast on startup if missing or invalid | MUST | |
 
 #### Acceptance Criteria
 
@@ -1449,9 +1450,17 @@ Depends on Topic 1 (HTTP Server).
 ##### AC-XC-CFG-020: Fail-fast on missing required config
 
 - **Validates:** REQ-XC-CFG-020
-- **Given** a required config value (SP_PROVIDER_NAME, SP_PROVIDER_ENDPOINT, or SP_DCM_REGISTRATION_URL) is absent or empty
+- **Given** a required config value (SP_PROVIDER_NAME, SP_PROVIDER_ENDPOINT, SP_DCM_REGISTRATION_URL, or SP_K8S_EXTERNAL_SVC_TYPE) is absent or empty
 - **When** the SP starts
 - **Then** the SP MUST return an error identifying the missing field
+- **And** MUST exit before starting the HTTP server or any subsystem
+
+##### AC-XC-CFG-030: Fail-fast on missing or invalid ExternalServiceType
+
+- **Validates:** REQ-XC-CFG-030
+- **Given** SP_K8S_EXTERNAL_SVC_TYPE is absent, empty, or set to an invalid value (e.g., "ClusterIP", "InvalidType")
+- **When** the SP starts
+- **Then** the SP MUST return an error identifying the invalid configuration
 - **And** MUST exit before starting the HTTP server or any subsystem
 
 ---
@@ -1467,7 +1476,7 @@ All configuration is loaded from environment variables.
 | server.requestTimeout | SP_SERVER_REQUEST_TIMEOUT | 30s | No | 1 |
 | kubernetes.namespace | SP_K8S_NAMESPACE | default | No | 4 |
 | kubernetes.kubeconfig | SP_K8S_KUBECONFIG | (auto) | No | 4 |
-| kubernetes.defaultServiceType | SP_K8S_DEFAULT_SVC_TYPE | ClusterIP | No | 4 |
+| kubernetes.externalServiceType | SP_K8S_EXTERNAL_SVC_TYPE | - | Yes | 4 |
 | nats.url | SP_NATS_URL | - | Yes | 5 |
 | provider.name | SP_PROVIDER_NAME | - | Yes | 5, 6 |
 | monitoring.debounceMs | SP_MONITOR_DEBOUNCE_MS | 500 | No | 5 |

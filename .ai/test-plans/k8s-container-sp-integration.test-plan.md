@@ -382,12 +382,12 @@ for full descriptions.
 - **When:** `Create` is called
 - **Then:** Service type is `ClusterIP`
 
-### TC-I024: External port uses DefaultServiceType=LoadBalancer
+### TC-I024: External port uses ExternalServiceType=LoadBalancer
 
 - **Requirement:** REQ-K8S-125
 - **Priority:** High
 - **Type:** Integration
-- **Given:** Container has port `{containerPort: 8080, visibility: external}` AND config has `defaultServiceType="LoadBalancer"`
+- **Given:** Container has port `{containerPort: 8080, visibility: external}` AND config has `externalServiceType="LoadBalancer"`
 - **When:** `Create` is called
 - **Then:** Service type is `LoadBalancer`
 
@@ -439,12 +439,12 @@ for full descriptions.
 - **When:** `Create` is called
 - **Then:** Service has labels `dcm.project/managed-by=dcm`, `dcm.project/dcm-instance-id=abc-123`, `dcm.project/dcm-service-type=container`
 
-### TC-I074: External port uses DefaultServiceType=NodePort
+### TC-I074: External port uses ExternalServiceType=NodePort
 
 - **Requirement:** REQ-K8S-125
 - **Priority:** Medium
 - **Type:** Integration
-- **Given:** Container has port `{containerPort: 8080, visibility: external}` AND config has `defaultServiceType="NodePort"`
+- **Given:** Container has port `{containerPort: 8080, visibility: external}` AND config has `externalServiceType="NodePort"`
 - **When:** `Create` is called
 - **Then:** Service type is `NodePort`
 
@@ -462,7 +462,7 @@ for full descriptions.
 - **Requirement:** REQ-K8S-125
 - **Priority:** High
 - **Type:** Integration
-- **Given:** Container has ports `[{containerPort: 8080, visibility: internal}, {containerPort: 9090, visibility: external}]` AND config has `defaultServiceType="LoadBalancer"`
+- **Given:** Container has ports `[{containerPort: 8080, visibility: internal}, {containerPort: 9090, visibility: external}]` AND config has `externalServiceType="LoadBalancer"`
 - **When:** `Create` is called
 - **Then:** Service type is `LoadBalancer` AND both ports 8080 and 9090 are in the Service
 
@@ -1274,7 +1274,7 @@ monitoring implementation) covering 77 requirements at integration level.
 
 > Requirements not listed above (REQ-HTTP-050–070, REQ-HLT-010–040,
 > REQ-API-010–060, REQ-API-080–160, REQ-API-170, REQ-STR-010, REQ-MON-090,
-> REQ-MON-120, REQ-XC-CFG-010) are covered in the unit test plan.
+> REQ-MON-120, REQ-XC-CFG-010, REQ-XC-CFG-030) are covered in the unit test plan.
 
 ---
 

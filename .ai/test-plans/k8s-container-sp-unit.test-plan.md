@@ -48,7 +48,7 @@ construction, debounce, indexer functions, registration payload builders) are
 - **Type:** Unit
 - **Given:** No config file is specified AND no environment variables are set
 - **When:** Config is loaded
-- **Then:** `server.address` defaults to `":8080"` AND `shutdownTimeout` defaults to `15s`
+- **Then:** `server.address` defaults to `":8080"` AND `shutdownTimeout` defaults to `15s` (note: `externalServiceType` has no default — validated as required by TC-U082)
 
 ---
 
@@ -348,6 +348,56 @@ construction, debounce, indexer functions, registration payload builders) are
 - **Given:** POST body includes `"provider_hints": {"gpu": true}` in the container spec
 - **When:** `POST /api/v1alpha1/containers` is called (mock repository returns success)
 - **Then:** HTTP status is `201` AND provider_hints do not affect store call
+
+### TC-U082: ExternalServiceType is required at startup
+
+- **Requirement:** REQ-XC-CFG-030
+- **AC:** AC-XC-CFG-030
+- **Priority:** High
+- **Type:** Unit
+- **Given:** SP_K8S_EXTERNAL_SVC_TYPE is not set (absent)
+- **When:** Config is loaded
+- **Then:** An error is returned identifying SP_K8S_EXTERNAL_SVC_TYPE as required
+
+### TC-U083: ExternalServiceType rejects invalid values
+
+- **Requirement:** REQ-XC-CFG-030
+- **AC:** AC-XC-CFG-030
+- **Priority:** High
+- **Type:** Unit
+- **Given:** SP_K8S_EXTERNAL_SVC_TYPE is set to "ClusterIP" (or other invalid value)
+- **When:** Config is loaded
+- **Then:** An error is returned stating the value must be LoadBalancer or NodePort
+
+### TC-U084: ExternalServiceType accepts LoadBalancer
+
+- **Requirement:** REQ-XC-CFG-030
+- **AC:** AC-XC-CFG-030
+- **Priority:** High
+- **Type:** Unit
+- **Given:** SP_K8S_EXTERNAL_SVC_TYPE is set to "LoadBalancer"
+- **When:** Config is loaded
+- **Then:** Config loads successfully with ExternalServiceType="LoadBalancer"
+
+### TC-U085: ExternalServiceType accepts NodePort
+
+- **Requirement:** REQ-XC-CFG-030
+- **AC:** AC-XC-CFG-030
+- **Priority:** High
+- **Type:** Unit
+- **Given:** SP_K8S_EXTERNAL_SVC_TYPE is set to "NodePort"
+- **When:** Config is loaded
+- **Then:** Config loads successfully with ExternalServiceType="NodePort"
+
+### TC-U086: ExternalServiceType rejects empty string
+
+- **Requirement:** REQ-XC-CFG-030
+- **AC:** AC-XC-CFG-030
+- **Priority:** High
+- **Type:** Unit
+- **Given:** SP_K8S_EXTERNAL_SVC_TYPE is set to "" (empty string)
+- **When:** Config is loaded
+- **Then:** An error is returned stating the value must be LoadBalancer or NodePort
 
 ### TC-U050: ListContainers rejects invalid page_token
 
@@ -829,7 +879,7 @@ dedicated test class or `Describe` block.
 - **Requirement:** REQ-XC-CFG-010
 - **Priority:** High
 - **Type:** Unit
-- **Given:** The required configuration values (provider name, provider endpoint, and DCM registration URL) are not provided
+- **Given:** The required configuration values (provider name, provider endpoint, DCM registration URL, and external service type) are not provided
 - **When:** The configuration is loaded
 - **Then:** An error is returned identifying each missing required field
 - **Referenced by:** TC-U002 (configuration loading)
@@ -980,6 +1030,7 @@ dedicated test class or `Describe` block.
 | REQ-REG-070   | TC-U061                           | Covered |
 | REQ-XC-CFG-010| TC-U002, TC-U004, TC-U063         | Covered |
 | REQ-XC-CFG-020| TC-U063                           | Covered |
+| REQ-XC-CFG-030| TC-U082, TC-U083, TC-U084, TC-U085 | Covered |
 | REQ-MON-131   | TC-U079                           | Covered |
 | REQ-MON-170   | TC-U072, TC-U079                  | Covered |
 
