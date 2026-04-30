@@ -200,6 +200,8 @@ var _ = Describe("K8s Store", func() {
 
 			got, err := s.Get(context.Background(), *created.Id)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(got.Service).NotTo(BeNil())
+			Expect(got.Service.Name).NotTo(BeNil())
 			Expect(got.Spec.Network).NotTo(BeNil())
 			Expect(got.Spec.Network.Ports).NotTo(BeNil())
 			ports := *got.Spec.Network.Ports
@@ -223,6 +225,8 @@ var _ = Describe("K8s Store", func() {
 
 			got, err := s.Get(context.Background(), *created.Id)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(got.Service).NotTo(BeNil())
+			Expect(got.Service.Name).NotTo(BeNil())
 			Expect(got.Spec.Network).NotTo(BeNil())
 			Expect(got.Spec.Network.Ports).NotTo(BeNil())
 			ports := *got.Spec.Network.Ports

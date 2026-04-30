@@ -44,6 +44,8 @@ var _ = Describe("K8s Store", func() {
 
 			// Service info
 			Expect(result.Service).NotTo(BeNil())
+			Expect(result.Service.Name).NotTo(BeNil())
+			Expect(*result.Service.Name).To(Equal("my-app"))
 			Expect(result.Service.ClusterIp).NotTo(BeNil())
 			Expect(*result.Service.ClusterIp).To(Equal("10.96.0.1"))
 		})
@@ -87,6 +89,8 @@ var _ = Describe("K8s Store", func() {
 			result, err := s.Get(context.Background(), "abc-123")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Service).NotTo(BeNil())
+			Expect(result.Service.Name).NotTo(BeNil())
+			Expect(*result.Service.Name).To(Equal("my-app"))
 			Expect(result.Service.ExternalIp).NotTo(BeNil())
 			Expect(*result.Service.ExternalIp).To(Equal("203.0.113.1"))
 		})

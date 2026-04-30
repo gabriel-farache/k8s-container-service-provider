@@ -6,7 +6,7 @@
 - **Related Requirements:** REQ-HTTP-050, REQ-HTTP-091, REQ-HTTP-090, REQ-HLT-010–040, REQ-API-010–180, REQ-STR-010, REQ-STR-080, REQ-K8S-040, REQ-K8S-050, REQ-K8S-230, REQ-MON-040–095, REQ-MON-110–120, REQ-MON-150, REQ-MON-170, REQ-REG-020, REQ-XC-ID-010–020, REQ-XC-ERR-010–040, REQ-XC-CFG-010–030
 - **Framework:** Ginkgo v2 + Gomega
 - **Created:** 2026-02-17
-- **Last Updated:** 2026-04-07 (added TC-U082–U085 for REQ-XC-CFG-030 ExternalServiceType validation)
+- **Last Updated:** 2026-04-29 (updated REQ-XC-ID-010 coverage for generateName)
 
 Unit tests verify individual components in isolation. All external dependencies
 (ContainerRepository, K8s client, NATS, HTTP server) are replaced with mocks,
@@ -1021,7 +1021,7 @@ dedicated test class or `Describe` block.
 | REQ-MON-120   | TC-U040 (via TC-I043/I044), TC-U041 (via TC-I042) | Covered |
 | REQ-MON-150   | TC-U037 (via TC-I048)             | Covered |
 | REQ-REG-020   | TC-U043 (via TC-I054), TC-U044 (via TC-I054), TC-U045 (via TC-I068), TC-U062, TC-U064 (via TC-I068) | Covered |
-| REQ-XC-ID-010 | TC-U009 (id in path), TC-U024 (via TC-I009, metadata.name as K8s name) | Covered |
+| REQ-XC-ID-010 | TC-U009 (id in path), TC-U024 (via TC-I009, metadata.name as generateName prefix) | Covered |
 | REQ-XC-ID-020 | TC-U013, TC-U046                  | Covered |
 | REQ-XC-ERR-010| TC-U022                           | Covered |
 | REQ-XC-ERR-020| TC-U022                           | Covered |

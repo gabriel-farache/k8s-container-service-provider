@@ -551,7 +551,7 @@ topic 5).
 | REQ-K8S-190 | Delete MUST succeed even if no Service exists for the container | MUST | |
 | REQ-K8S-200 | The SP MUST support authentication via kubeconfig file | MUST | |
 | REQ-K8S-210 | The SP MUST support in-cluster service account authentication | MUST | |
-| REQ-K8S-220 | GET operations MUST query the cluster and populate runtime data (status, network.ip, service fields) | MUST | |
+| REQ-K8S-220 | GET operations MUST query the cluster and populate runtime data (status, network.ip, service fields including service.name) | MUST | DD-140 |
 | REQ-K8S-230 | Pod phases MUST be mapped to DCM ContainerStatus values per the status mapping table | MUST | DD-020 |
 | REQ-K8S-240 | When a Deployment exists but no Pod has been created yet, the status MUST be PENDING | MUST | SC-007 |
 | REQ-K8S-250 | List operations MUST support pagination over Deployment resources using K8s continue tokens | MUST | |
@@ -581,9 +581,11 @@ topic 5).
 
 > **Note:** Pod labels are inherited from the Deployment's pod template spec.
 
-> **Note:** `metadata.name` is used as the Kubernetes Deployment name and must
-> comply with DNS label limits (63 characters maximum). The OpenAPI spec
-> enforces `maxLength: 63` on `ContainerMetadata.name`.
+> **Note:** `metadata.name` is used as the `generateName` prefix for Kubernetes
+> Deployments and Services (e.g., `metadata.name + "-"`). The actual resource
+> name is server-assigned. `metadata.name` must comply with DNS label limits
+> (63 characters maximum). The OpenAPI spec enforces `maxLength: 63` on
+> `ContainerMetadata.name`. See DD-140.
 
 #### Configuration Introduced
 
@@ -851,6 +853,7 @@ topic 5).
 - **Then** the response MUST include:
   - `status`: mapped from Pod phase
   - `network.ip`: from Pod status
+  - `service.name`: the Kubernetes Service resource name (server-generated via `generateName`)
   - `service.clusterIP`: from Service spec
   - `service.type`: from Service spec
   - `service.externalIP`: from LoadBalancer status (when available)
@@ -1307,7 +1310,7 @@ Depends on Topic 1 (HTTP Server).
 
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
-| REQ-XC-ID-010 | Two identifiers MUST be used for container resources: `id` (DCM identifier, used in URL paths and stored as `dcm.project/dcm-instance-id` label) and `metadata.name` (K8s resource name, used as Deployment/Service name) | MUST | |
+| REQ-XC-ID-010 | Two identifiers MUST be used for container resources: `id` (DCM identifier, used in URL paths and stored as `dcm.project/dcm-instance-id` label) and `metadata.name` (used as the `generateName` prefix for Kubernetes Deployments and Services; the actual K8s resource name is server-assigned) | MUST | DD-140 |
 | REQ-XC-ID-020 | Conflict detection MUST be based on `metadata.name`, not `id`. Both uniqueness constraints apply independently | MUST | SC-001 |
 
 #### Acceptance Criteria
@@ -1318,7 +1321,7 @@ Depends on Topic 1 (HTTP Server).
 - **Given** a container is created with id "abc-123" and metadata.name "web-app"
 - **When** the resource is stored
 - **Then** `id` MUST be used in URL paths (`/containers/abc-123`) and as the `dcm.project/dcm-instance-id` label
-- **And** `metadata.name` MUST be used as the Kubernetes Deployment and Service name
+- **And** `metadata.name` MUST be used as the `generateName` prefix for Kubernetes Deployments and Services (e.g., `"web-app-"`). The actual K8s resource name is server-assigned.
 
 ##### AC-XC-ID-020: Conflict detection based on metadata.name
 
@@ -1607,6 +1610,21 @@ allowing the SP to proceed with HTTP server startup. Subsequent publish failures
 are handled by the existing retry mechanism (REQ-MON-180).
 
 **Related requirements:** REQ-MON-190
+
+### DD-140: generateName for Kubernetes resources
+
+**Decision:** Kubernetes Deployments and Services use `generateName`
+(`metadata.name + "-"`) instead of a fixed `Name` field. The actual resource
+name is server-assigned by the Kubernetes API.
+
+**Rationale:** Using `generateName` avoids name collisions when multiple
+containers share the same `metadata.name` with different DCM instance IDs. It
+also decouples the user-facing `metadata.name` from the internal Kubernetes
+resource name. Because the caller cannot predict the generated Service name,
+the `ServiceInfo` schema includes a `name` field populated on GET so clients
+can discover it.
+
+**Related requirements:** REQ-K8S-010, REQ-K8S-100, REQ-K8S-220, REQ-XC-ID-010
 
 ### DD-070: Health response schema
 

@@ -167,7 +167,9 @@ func enrichWithPod(container *v1alpha1.Container, pod *corev1.Pod) {
 // enrichWithService populates service info from a Kubernetes Service and
 // infers port visibility from the Service state.
 func enrichWithService(container *v1alpha1.Container, svc *corev1.Service) {
-	info := &v1alpha1.ServiceInfo{}
+	info := &v1alpha1.ServiceInfo{
+		Name: &svc.Name,
+	}
 
 	if svc.Spec.ClusterIP != "" {
 		info.ClusterIp = &svc.Spec.ClusterIP

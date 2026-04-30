@@ -564,6 +564,10 @@ components:
       type: object
       description: Kubernetes Service details
       properties:
+        name:
+          type: string
+          readOnly: true
+          description: Name of the Kubernetes Service
         cluster_ip:
           type: string
           description: Cluster-internal IP address

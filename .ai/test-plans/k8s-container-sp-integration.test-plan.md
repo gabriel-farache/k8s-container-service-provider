@@ -6,7 +6,7 @@
 - **Related Requirements:** REQ-HTTP-010–040, REQ-HTTP-060–070, REQ-HTTP-080–090, REQ-HTTP-110, REQ-API-070, REQ-API-180, REQ-STR-020–070, REQ-STR-080, REQ-K8S-010–270, REQ-MON-010–030, REQ-MON-040–080, REQ-MON-095, REQ-MON-100, REQ-MON-110, REQ-MON-130–150, REQ-MON-160, REQ-MON-180–190, REQ-REG-010–070, REQ-XC-ID-010–020, REQ-XC-LBL-010, REQ-XC-ERR-010–020, REQ-XC-LOG-010–020
 - **Framework:** Ginkgo v2 + Gomega
 - **Created:** 2026-02-17
-- **Last Updated:** 2026-03-25 (added TC-I113, TC-I114 for delete handler cross-lookup bug fix)
+- **Last Updated:** 2026-04-29 (updated TC-I009/I030/I033/I093/I094 for generateName and service.name)
 
 Integration tests verify components working together with realistic (but
 controlled) dependencies. The K8s store tests use `client-go/kubernetes/fake`.
@@ -227,7 +227,7 @@ for full descriptions.
 - **Transitively covers:** TC-U024 (ContainerRepository interface satisfied — `var _ ContainerRepository = (*K8sStore)(nil)` in test file)
 - **Given:** A valid container request with `metadata.name="my-app"`, `image.reference="nginx:latest"`
 - **When:** `Create` is called on the K8s store
-- **Then:** A Deployment named `"my-app"` exists in the configured namespace with `replicas=1` AND the returned container has all read-only fields populated (`id`, `path`, `status=PENDING`, `create_time`, `update_time`, `metadata.namespace`)
+- **Then:** A Deployment with `generateName` prefix `"my-app-"` exists in the configured namespace with `replicas=1` AND the returned container has all read-only fields populated (`id`, `path`, `status=PENDING`, `create_time`, `update_time`, `metadata.namespace`)
 
 ### TC-I010: Created Deployment and Pod template carry DCM labels
 
@@ -473,7 +473,7 @@ for full descriptions.
 - **Type:** Integration
 - **Given:** A Deployment with ports AND a ClusterIP Service exist
 - **When:** `Get` is called
-- **Then:** All ports in the Service have `visibility=internal`
+- **Then:** `service.name` is populated AND all ports in the Service have `visibility=internal`
 
 ### TC-I094: GET infers external when Service is LoadBalancer
 
@@ -482,7 +482,7 @@ for full descriptions.
 - **Type:** Integration
 - **Given:** A Deployment with ports AND a LoadBalancer Service exist
 - **When:** `Get` is called
-- **Then:** All ports in the Service have `visibility=external`
+- **Then:** `service.name` is populated AND all ports in the Service have `visibility=external`
 
 ### TC-I095: GET infers none when no Service exists
 
@@ -561,6 +561,7 @@ for full descriptions.
 - **Then:**
   - `status` is `RUNNING` (from Pod phase)
   - `network.ip` is `"10.0.0.1"` (from Pod status)
+  - `service.name` is populated from Service metadata (the server-generated K8s Service name)
   - `service.clusterIP` is populated from Service spec
   - `service.type` is `"ClusterIP"` from Service spec
   - `service.ports` is populated from Service spec
@@ -591,7 +592,7 @@ for full descriptions.
 - **Type:** Integration
 - **Given:** A container has a LoadBalancer Service with status.loadBalancer.ingress[0].ip = `"203.0.113.1"`
 - **When:** `Get` is called
-- **Then:** `service.externalIP` is `"203.0.113.1"`
+- **Then:** `service.name` is populated from Service metadata AND `service.externalIP` is `"203.0.113.1"`
 
 ### TC-I075: Get populates update_time from Pod condition transition
 
@@ -1261,7 +1262,7 @@ for full descriptions.
 | REQ-REG-051    | TC-I057                             | Covered |
 | REQ-REG-060    | TC-I058                             | Covered |
 | REQ-REG-070    | TC-I059                             | Covered |
-| REQ-XC-ID-010  | TC-I010 (dcm.project/dcm-instance-id label), TC-I009 (metadata.name as Deployment name) | Covered |
+| REQ-XC-ID-010  | TC-I010 (dcm.project/dcm-instance-id label), TC-I009 (metadata.name as generateName prefix) | Covered |
 | REQ-XC-ID-020  | TC-I028, TC-I069                    | Covered |
 | REQ-XC-LBL-010 | TC-I010, TC-I027, TC-I070           | Covered |
 | REQ-XC-ERR-010 | TC-I008                             | Covered |
