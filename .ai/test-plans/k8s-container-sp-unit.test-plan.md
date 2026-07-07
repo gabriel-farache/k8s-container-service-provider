@@ -205,32 +205,32 @@ construction, debounce, indexer functions, registration payload builders) are
   - Port out of range (e.g., `containerPort=99999`) (TC-U056)
 - **Then:** Each returns HTTP `400` with RFC 7807 error body containing type `INVALID_ARGUMENT`
 
-### TC-U015: ListContainers returns 200 with containers
+### TC-U015: ListContainers returns 200 with results array
 
-- **Requirement:** REQ-API-100
+- **Requirement:** REQ-API-100, REQ-AEP-132-010
 - **Priority:** High
 - **Type:** Unit
 - **Given:** Mock repository returns a list of 3 containers
 - **When:** `GET /api/v1alpha1/containers` is called
-- **Then:** HTTP status is `200` AND body has `containers` array with 3 items conforming to Container schema
+- **Then:** HTTP status is `200` AND body has `results` array with 3 items conforming to Container schema
 
 ### TC-U016: ListContainers supports pagination parameters
 
-- **Requirement:** REQ-API-110
+- **Requirement:** REQ-API-110, REQ-AEP-132-010
 - **Priority:** High
 - **Type:** Unit
 - **Given:** Mock repository returns 10 containers and a `next_page_token` when `max_page_size=10`
 - **When:** `GET /api/v1alpha1/containers?max_page_size=10` is called
-- **Then:** Response has at most 10 containers AND `next_page_token` is non-empty
+- **Then:** Response has at most 10 containers in `results` AND `next_page_token` is non-empty
 
-### TC-U017: ListContainers returns empty array when no containers
+### TC-U017: ListContainers returns empty results array when no containers
 
-- **Requirement:** REQ-API-120
+- **Requirement:** REQ-API-120, REQ-AEP-132-010
 - **Priority:** High
 - **Type:** Unit
 - **Given:** Mock repository returns an empty list
 - **When:** `GET /api/v1alpha1/containers` is called
-- **Then:** HTTP status is `200` AND `containers` is an empty JSON array `[]` (not `null` or absent)
+- **Then:** HTTP status is `200` AND `results` is an empty JSON array `[]` (not `null` or absent)
 
 ### TC-U018: GetContainer returns 200 for existing container
 
@@ -441,6 +441,25 @@ construction, debounce, indexer functions, registration payload builders) are
 - **Given:** Mock repository returns an invalid-argument error for an undecodable `page_token`
 - **When:** `GET /api/v1alpha1/containers?page_token=not-a-valid-token` is called
 - **Then:** HTTP status is `400` AND body is RFC 7807 error with type `INVALID_ARGUMENT`
+
+### TC-U090: HTTP list JSON has `results` key, not `containers`
+
+- **Requirement:** REQ-AEP-132-010
+- **Priority:** High
+- **Type:** Unit (integration-level HTTP assertion)
+- **Given:** The server is running and mock repository returns a list of containers
+- **When:** `GET /api/v1alpha1/containers` is called via HTTP
+- **Then:** The raw JSON response body contains a `results` key AND does NOT contain a `containers` key
+
+### TC-U091: Handler errors include `status` in JSON
+
+- **Requirement:** REQ-AEP-193-010
+- **AC:** AC-API-170
+- **Priority:** Medium
+- **Type:** Unit
+- **Given:** Any handler error condition (not found, conflict, validation failure, internal error)
+- **When:** The error response is returned
+- **Then:** The RFC 7807 body includes a `status` field matching the HTTP status code (e.g., 400, 404, 409, 500)
 
 ### TC-U051: Handler returns 500 INTERNAL for unexpected store errors
 
@@ -1041,6 +1060,8 @@ dedicated test class or `Describe` block.
 | REQ-API-180   | TC-U023, TC-U051                  | Covered |
 | REQ-API-200   | TC-U079, TC-U080                  | Covered |
 | REQ-API-210   | TC-U081                           | Covered |
+| REQ-AEP-132-010 | TC-U015, TC-U016, TC-U017, TC-U090 | Covered |
+| REQ-AEP-193-010 | TC-U091                           | Covered |
 | REQ-STR-010   | TC-U024 (via TC-I009)             | Covered |
 | REQ-STR-080   | TC-U025 (via TC-U019/U021), TC-U026 (via TC-U013) | Covered |
 | REQ-K8S-040   | TC-U027 (via TC-I012)             | Covered |
@@ -1071,7 +1092,7 @@ dedicated test class or `Describe` block.
 | REQ-MON-131   | TC-U079                           | Covered |
 | REQ-MON-170   | TC-U072, TC-U079                  | Covered |
 
-**Total:** 76 test case IDs (2 retired: TC-U065, TC-U066) — 45 in behavioural
+**Total:** 78 test case IDs (2 retired: TC-U065, TC-U066) — 47 in behavioural
 test classes, 31 in the utility index (tested transitively through higher-level
 behavioural and integration tests).
 

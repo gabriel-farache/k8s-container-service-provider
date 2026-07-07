@@ -586,9 +586,11 @@ components:
 
     ContainerList:
       type: object
-      description: Paginated list of container instances
+      description: Paginated list of container instances (AEP-132 List response)
+      required:
+        - results
       properties:
-        containers:
+        results:
           type: array
           items:
             $ref: '#/components/schemas/Container'

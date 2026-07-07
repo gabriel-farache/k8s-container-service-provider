@@ -2,6 +2,40 @@ extends:
   - https://raw.githubusercontent.com/aep-dev/aep-openapi-linter/main/spectral.yaml
 
 rules:
+  aep-132-list-response-results-field:
+    description: List response resource array must be named 'results' per AEP-132
+    message: "AEP-132 requires the list resource array to be named 'results' (not another name such as 'containers')"
+    severity: error
+    given: $.components.schemas.ContainerList.properties
+    then:
+      field: results
+      function: truthy
+
+  aep-132-list-response-results-is-array:
+    description: List response 'results' field must be typed as an array per AEP-132
+    message: "AEP-132 requires 'results' to be an array type"
+    severity: error
+    given: $.components.schemas.ContainerList.properties.results
+    then:
+      field: type
+      function: enumeration
+      functionOptions:
+        values:
+          - array
+
+  aep-132-list-response-results-required:
+    description: List response must mark 'results' as required per AEP-132
+    message: "AEP-132 requires 'results' to be listed in required fields"
+    severity: error
+    given: $.components.schemas.ContainerList.required
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          type: array
+          contains:
+            const: results
+
   x-aep-resource-no-boolean:
     description: x-aep-resource should be an object with full structure, not just true
     message: "x-aep-resource should define singular, plural, type, and patterns per AEP-4"

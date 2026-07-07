@@ -222,6 +222,16 @@ for full descriptions.
 - **When:** The request is processed
 - **Then:** The client sees the original 418 status AND Content-Type is NOT `application/problem+json` AND the log contains "panic recovered" and "headers already sent"
 
+### TC-I119: HTTP list JSON response uses `results` field (AEP-132)
+
+- **Requirement:** REQ-AEP-132-010
+- **AC:** AC-API-090
+- **Priority:** High
+- **Type:** Integration
+- **Given:** The server is running and containers exist in the store
+- **When:** `GET /api/v1alpha1/containers` is called via HTTP
+- **Then:** The raw JSON response body contains a `results` key AND does NOT contain a `containers` key
+
 ---
 
 ## 2 · K8s Store — Create Operations
@@ -1308,9 +1318,10 @@ for full descriptions.
 | REQ-XC-ERR-020 | TC-I008                             | Covered |
 | REQ-XC-LOG-010 | TC-I006, TC-I007                    | Covered |
 | REQ-XC-LOG-020 | TC-I006, TC-I007 (INFO), TC-I057 (ERROR) | Covered |
+| REQ-AEP-132-010 | TC-I119                             | Covered |
 
-**Total:** 99 integration test cases (including 2 E2E placeholders, 3 pending
-monitoring implementation) covering 79 requirements at integration level.
+**Total:** 100 integration test cases (including 2 E2E placeholders, 3 pending
+monitoring implementation) covering 80 requirements at integration level.
 
 > Requirements not listed above (REQ-HTTP-050–070, REQ-HLT-010–040,
 > REQ-API-010–060, REQ-API-080–160, REQ-API-170, REQ-STR-010, REQ-MON-090,

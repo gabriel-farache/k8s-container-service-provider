@@ -23,6 +23,7 @@ over NATS, and exposes a health endpoint for DCM control plane polling.
 - [SP Health Check](https://github.com/dcm-project/enhancements/blob/main/enhancements/service-provider-health-check/service-provider-health-check.md)
 - [SP Status Reporting](https://github.com/dcm-project/enhancements/blob/main/enhancements/state-management/service-provider-status-reporting.md)
 - [Service Type Definitions](https://github.com/dcm-project/enhancements/blob/main/enhancements/service-type-definitions/service-type-definitions.md)
+- [AEP-132: Standard methods: List](https://aep.dev/132/)
 - OpenAPI Spec: `api/v1alpha1/openapi.yaml` (source of truth for API contract)
 
 ---
@@ -341,7 +342,7 @@ size limits.
 | REQ-API-090 | POST MUST validate required fields in the request body (e.g., `image`) | MUST | SC-002 |
 | REQ-API-100 | GET `/api/v1alpha1/containers` MUST return a paginated list conforming to ContainerList schema | MUST | SC-006 |
 | REQ-API-110 | GET MUST support `max_page_size` and `page_token` query parameters for pagination | MUST | |
-| REQ-API-120 | GET MUST return 200 OK with an empty `containers` array when no containers exist | MUST | |
+| REQ-API-120 | GET MUST return 200 OK with an empty `results` array when no containers exist | MUST | |
 | REQ-API-130 | GET `/api/v1alpha1/containers/{containerId}` MUST return the container with 200 OK | MUST | |
 | REQ-API-140 | GET MUST return 404 Not Found with RFC 7807 error body when the container does not exist | MUST | |
 | REQ-API-150 | DELETE `/api/v1alpha1/containers/{containerId}` MUST return 204 No Content | MUST | |
@@ -351,6 +352,8 @@ size limits.
 | REQ-API-180 | Error types MUST map to appropriate HTTP status codes per the error mapping table | MUST | |
 | REQ-API-200 | The POST `/api/v1alpha1/containers` request body MUST be a JSON object with a required `spec` property containing the Container input fields (CreateContainerRequest wrapper). The response remains a bare Container | MUST | D1 |
 | REQ-API-210 | The Container schema MUST include an optional `provider_hints` field (type: object, additionalProperties: true). The SP MUST accept it on input but MUST NOT act on hint content | MUST | D3, DD-080 |
+| REQ-AEP-132-010 | List response MUST name the resource array `results` per [AEP-132 § Responses](https://aep.dev/132/#responses); `next_page_token` MUST be present when more pages exist (AEP-158) | MUST | |
+| REQ-AEP-193-010 | Handler-emitted error responses SHOULD include `status` matching the HTTP status code | SHOULD | |
 
 **Error type mapping (REQ-API-180):**
 
@@ -433,26 +436,26 @@ size limits.
 
 ##### AC-API-090: List containers - success
 
-- **Validates:** REQ-API-100
+- **Validates:** REQ-API-100, REQ-AEP-132-010
 - **Given** containers exist in the store
 - **When** GET `/api/v1alpha1/containers` is called
 - **Then** the response MUST be 200 OK
-- **And** the body MUST conform to the ContainerList schema
+- **And** the body MUST conform to the ContainerList schema with a `results` array
 
 ##### AC-API-100: List containers - pagination
 
-- **Validates:** REQ-API-110
+- **Validates:** REQ-API-110, REQ-AEP-132-010
 - **Given** more containers exist than max_page_size
 - **When** GET is called with `?max_page_size=10`
-- **Then** at most 10 containers MUST be returned
+- **Then** at most 10 containers MUST be returned in the `results` array
 - **And** `next_page_token` MUST be present if more results exist
 
 ##### AC-API-110: List containers - empty
 
-- **Validates:** REQ-API-120
+- **Validates:** REQ-API-120, REQ-AEP-132-010
 - **Given** no containers exist
 - **When** GET `/api/v1alpha1/containers` is called
-- **Then** the response MUST be 200 OK with an empty `containers` array
+- **Then** the response MUST be 200 OK with an empty `results` array `[]`
 
 ##### AC-API-120: Get container - success
 
@@ -490,6 +493,13 @@ size limits.
 - **When** an error response is returned
 - **Then** the response MUST have `Content-Type: application/problem+json`
 - **And** the body MUST contain at minimum `type` and `title` fields
+
+##### AC-API-170: Error response status field
+
+- **Validates:** REQ-AEP-193-010
+- **Given** any handler error condition (not found, conflict, validation failure, internal error)
+- **When** the error response is returned
+- **Then** the RFC 7807 body SHOULD include a `status` field matching the HTTP status code (e.g., 400, 404, 409, 500)
 
 ##### AC-API-200: Request body envelope accepted
 
@@ -1779,4 +1789,6 @@ conditions (unless ReplicaFailure=True or Replicas=0, which map to FAILED).
 | REQ-XC-ERR-NNN | 5.3: Error Handling | 4 |
 | REQ-XC-LOG-NNN | 5.4: Logging | 2 |
 | REQ-XC-CFG-NNN | 5.5: Configuration Management | 2 |
-| **Total** | | **117** |
+| REQ-AEP-132-NNN | 4.3: AEP-132 List compliance | 1 |
+| REQ-AEP-193-NNN | 4.3: AEP-193 Error status | 1 |
+| **Total** | | **119** |

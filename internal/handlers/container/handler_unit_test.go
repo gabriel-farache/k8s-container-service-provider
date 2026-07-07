@@ -402,13 +402,13 @@ var _ = Describe("Container API Handlers", func() {
 	// ListContainers
 	// -----------------------------------------------------------------------
 	Describe("ListContainers", func() {
-		// TC-U015: returns 200 with containers
-		It("returns 200 with containers (TC-U015)", func() {
+		// TC-U015: returns 200 with results array
+		It("returns 200 with results array (TC-U015)", func() {
 			c1 := *newContainerResult(validCreateBody(), "id-1")
 			c2 := *newContainerResult(validCreateBody(), "id-2")
 			repo.ListFunc = func(_ context.Context, _ int32, _ string) (*v1alpha1.ContainerList, error) {
 				return &v1alpha1.ContainerList{
-					Containers: &[]v1alpha1.Container{c1, c2},
+					Results: []v1alpha1.Container{c1, c2},
 				}, nil
 			}
 
@@ -419,8 +419,7 @@ var _ = Describe("Container API Handlers", func() {
 
 			listResp, ok := resp.(oapigen.ListContainers200JSONResponse)
 			Expect(ok).To(BeTrue(), "expected ListContainers200JSONResponse")
-			Expect(listResp.Containers).NotTo(BeNil())
-			Expect(*listResp.Containers).To(HaveLen(2))
+			Expect(listResp.Results).To(HaveLen(2))
 		})
 
 		// TC-U016: supports pagination parameters
@@ -431,7 +430,7 @@ var _ = Describe("Container API Handlers", func() {
 				capturedPageSize = maxPageSize
 				capturedPageToken = pageToken
 				return &v1alpha1.ContainerList{
-					Containers:    &[]v1alpha1.Container{},
+					Results:       []v1alpha1.Container{},
 					NextPageToken: util.Ptr("next-token"),
 				}, nil
 			}
@@ -453,11 +452,11 @@ var _ = Describe("Container API Handlers", func() {
 			Expect(listResp.NextPageToken).To(Equal(util.Ptr("next-token")))
 		})
 
-		// TC-U017: returns empty array when no containers
-		It("returns empty array when no containers (TC-U017)", func() {
+		// TC-U017: returns empty results array when no containers
+		It("returns empty results array when no containers (TC-U017)", func() {
 			repo.ListFunc = func(_ context.Context, _ int32, _ string) (*v1alpha1.ContainerList, error) {
 				return &v1alpha1.ContainerList{
-					Containers: &[]v1alpha1.Container{},
+					Results: []v1alpha1.Container{},
 				}, nil
 			}
 
@@ -468,8 +467,8 @@ var _ = Describe("Container API Handlers", func() {
 
 			listResp, ok := resp.(oapigen.ListContainers200JSONResponse)
 			Expect(ok).To(BeTrue(), "expected ListContainers200JSONResponse")
-			Expect(listResp.Containers).NotTo(BeNil())
-			Expect(*listResp.Containers).To(BeEmpty())
+			Expect(listResp.Results).NotTo(BeNil())
+			Expect(listResp.Results).To(BeEmpty())
 		})
 
 		// TC-U050: rejects invalid page_token
@@ -965,6 +964,172 @@ var _ = Describe("Container API Handlers", func() {
 					Expect(errResp.Type).To(Equal(v1alpha1.INTERNAL))
 					Expect(*errResp.Detail).To(Equal("an unexpected error occurred"))
 					Expect(*errResp.Detail).NotTo(ContainSubstring("network timeout"))
+				},
+			),
+		)
+
+		// TC-U091: handler errors include status in JSON
+		DescribeTable("handler errors include status field (TC-U091)",
+			func(
+				setup func(),
+				callHandler func(oapigen.StrictServerInterface) (interface{}, error),
+				expectedStatus int32,
+				extractStatus func(interface{}) *int32,
+			) {
+				setup()
+				resp, err := callHandler(h)
+				Expect(err).NotTo(HaveOccurred())
+				st := extractStatus(resp)
+				Expect(st).NotTo(BeNil(), "status must be set")
+				Expect(*st).To(Equal(expectedStatus))
+			},
+
+			Entry("Create 400 (invalid argument)",
+				func() {
+					repo.CreateFunc = func(_ context.Context, _ v1alpha1.ContainerSpec, _ string) (*v1alpha1.Container, error) {
+						return nil, &store.InvalidArgumentError{Message: "bad"}
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					body := validCreateBody()
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.Container{Spec: body}})
+				},
+				int32(400),
+				func(resp interface{}) *int32 {
+					r := resp.(oapigen.CreateContainer400ApplicationProblemPlusJSONResponse)
+					return r.Status
+				},
+			),
+
+			Entry("Create 409 (conflict)",
+				func() {
+					repo.CreateFunc = func(_ context.Context, _ v1alpha1.ContainerSpec, _ string) (*v1alpha1.Container, error) {
+						return nil, &store.ConflictError{Message: "dup"}
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					body := validCreateBody()
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.Container{Spec: body}})
+				},
+				int32(409),
+				func(resp interface{}) *int32 {
+					r := resp.(oapigen.CreateContainer409ApplicationProblemPlusJSONResponse)
+					return r.Status
+				},
+			),
+
+			Entry("Create 500 (unexpected)",
+				func() {
+					repo.CreateFunc = func(_ context.Context, _ v1alpha1.ContainerSpec, _ string) (*v1alpha1.Container, error) {
+						return nil, errors.New("unexpected")
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					body := validCreateBody()
+					return s.CreateContainer(context.Background(), oapigen.CreateContainerRequestObject{Body: &v1alpha1.Container{Spec: body}})
+				},
+				int32(500),
+				func(resp interface{}) *int32 {
+					r := resp.(oapigen.CreateContainer500ApplicationProblemPlusJSONResponse)
+					return r.Status
+				},
+			),
+
+			Entry("Get 404 (not found)",
+				func() {
+					repo.GetFunc = func(_ context.Context, _ string) (*v1alpha1.Container, error) {
+						return nil, &store.NotFoundError{ID: "x"}
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					return s.GetContainer(context.Background(), oapigen.GetContainerRequestObject{ContainerId: "x"})
+				},
+				int32(404),
+				func(resp interface{}) *int32 {
+					r := resp.(oapigen.GetContainer404ApplicationProblemPlusJSONResponse)
+					return r.Status
+				},
+			),
+
+			Entry("Get 500 (unexpected)",
+				func() {
+					repo.GetFunc = func(_ context.Context, _ string) (*v1alpha1.Container, error) {
+						return nil, errors.New("unexpected")
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					return s.GetContainer(context.Background(), oapigen.GetContainerRequestObject{ContainerId: "x"})
+				},
+				int32(500),
+				func(resp interface{}) *int32 {
+					r := resp.(oapigen.GetContainer500ApplicationProblemPlusJSONResponse)
+					return r.Status
+				},
+			),
+
+			Entry("Delete 404 (not found)",
+				func() {
+					repo.DeleteFunc = func(_ context.Context, _ string) error {
+						return &store.NotFoundError{ID: "x"}
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					return s.DeleteContainer(context.Background(), oapigen.DeleteContainerRequestObject{ContainerId: "x"})
+				},
+				int32(404),
+				func(resp interface{}) *int32 {
+					r := resp.(oapigen.DeleteContainer404ApplicationProblemPlusJSONResponse)
+					return r.Status
+				},
+			),
+
+			Entry("Delete 500 (unexpected)",
+				func() {
+					repo.DeleteFunc = func(_ context.Context, _ string) error {
+						return errors.New("unexpected")
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					return s.DeleteContainer(context.Background(), oapigen.DeleteContainerRequestObject{ContainerId: "x"})
+				},
+				int32(500),
+				func(resp interface{}) *int32 {
+					r := resp.(oapigen.DeleteContainer500ApplicationProblemPlusJSONResponse)
+					return r.Status
+				},
+			),
+
+			Entry("List 400 (invalid argument)",
+				func() {
+					repo.ListFunc = func(_ context.Context, _ int32, _ string) (*v1alpha1.ContainerList, error) {
+						return nil, &store.InvalidArgumentError{Message: "bad token"}
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					return s.ListContainers(context.Background(), oapigen.ListContainersRequestObject{
+						Params: v1alpha1.ListContainersParams{PageToken: util.Ptr("bad")},
+					})
+				},
+				int32(400),
+				func(resp interface{}) *int32 {
+					r := resp.(oapigen.ListContainers400ApplicationProblemPlusJSONResponse)
+					return r.Status
+				},
+			),
+
+			Entry("List 500 (unexpected)",
+				func() {
+					repo.ListFunc = func(_ context.Context, _ int32, _ string) (*v1alpha1.ContainerList, error) {
+						return nil, errors.New("unexpected")
+					}
+				},
+				func(s oapigen.StrictServerInterface) (interface{}, error) {
+					return s.ListContainers(context.Background(), oapigen.ListContainersRequestObject{})
+				},
+				int32(500),
+				func(resp interface{}) *int32 {
+					r := resp.(oapigen.ListContainers500ApplicationProblemPlusJSONResponse)
+					return r.Status
 				},
 			),
 		)

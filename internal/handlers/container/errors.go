@@ -2,17 +2,20 @@ package container
 
 import (
 	"errors"
+	"net/http"
 
 	v1alpha1 "github.com/dcm-project/k8s-container-service-provider/api/v1alpha1"
 	oapigen "github.com/dcm-project/k8s-container-service-provider/internal/api/server"
 	"github.com/dcm-project/k8s-container-service-provider/internal/httperror"
 	"github.com/dcm-project/k8s-container-service-provider/internal/store"
+	"github.com/dcm-project/k8s-container-service-provider/internal/util"
 )
 
 func newCreateError400(detail, requestPath string) oapigen.CreateContainer400ApplicationProblemPlusJSONResponse {
 	return oapigen.CreateContainer400ApplicationProblemPlusJSONResponse{
 		Type:     v1alpha1.INVALIDARGUMENT,
 		Title:    "Invalid argument",
+		Status:   util.Ptr(int32(http.StatusBadRequest)),
 		Detail:   &detail,
 		Instance: &requestPath,
 	}
@@ -25,6 +28,7 @@ func (h *Handler) mapCreateError(err error, requestPath string) oapigen.CreateCo
 		return oapigen.CreateContainer409ApplicationProblemPlusJSONResponse{
 			Type:     v1alpha1.ALREADYEXISTS,
 			Title:    "Already exists",
+			Status:   util.Ptr(int32(http.StatusConflict)),
 			Detail:   &detail,
 			Instance: &requestPath,
 		}
@@ -40,6 +44,7 @@ func (h *Handler) mapCreateError(err error, requestPath string) oapigen.CreateCo
 	return oapigen.CreateContainer500ApplicationProblemPlusJSONResponse{
 		Type:     v1alpha1.INTERNAL,
 		Title:    httperror.InternalTitle,
+		Status:   util.Ptr(int32(http.StatusInternalServerError)),
 		Detail:   &detail,
 		Instance: &requestPath,
 	}
@@ -52,6 +57,7 @@ func (h *Handler) mapGetError(err error, requestPath string) oapigen.GetContaine
 		return oapigen.GetContainer404ApplicationProblemPlusJSONResponse{
 			Type:     v1alpha1.NOTFOUND,
 			Title:    "Not found",
+			Status:   util.Ptr(int32(http.StatusNotFound)),
 			Detail:   &detail,
 			Instance: &requestPath,
 		}
@@ -62,6 +68,7 @@ func (h *Handler) mapGetError(err error, requestPath string) oapigen.GetContaine
 	return oapigen.GetContainer500ApplicationProblemPlusJSONResponse{
 		Type:     v1alpha1.INTERNAL,
 		Title:    httperror.InternalTitle,
+		Status:   util.Ptr(int32(http.StatusInternalServerError)),
 		Detail:   &detail,
 		Instance: &requestPath,
 	}
@@ -74,6 +81,7 @@ func (h *Handler) mapDeleteError(err error, requestPath string) oapigen.DeleteCo
 		return oapigen.DeleteContainer404ApplicationProblemPlusJSONResponse{
 			Type:     v1alpha1.NOTFOUND,
 			Title:    "Not found",
+			Status:   util.Ptr(int32(http.StatusNotFound)),
 			Detail:   &detail,
 			Instance: &requestPath,
 		}
@@ -84,6 +92,7 @@ func (h *Handler) mapDeleteError(err error, requestPath string) oapigen.DeleteCo
 	return oapigen.DeleteContainer500ApplicationProblemPlusJSONResponse{
 		Type:     v1alpha1.INTERNAL,
 		Title:    httperror.InternalTitle,
+		Status:   util.Ptr(int32(http.StatusInternalServerError)),
 		Detail:   &detail,
 		Instance: &requestPath,
 	}
@@ -96,6 +105,7 @@ func (h *Handler) mapListError(err error, requestPath string) oapigen.ListContai
 		return oapigen.ListContainers400ApplicationProblemPlusJSONResponse{
 			Type:     v1alpha1.INVALIDARGUMENT,
 			Title:    "Invalid argument",
+			Status:   util.Ptr(int32(http.StatusBadRequest)),
 			Detail:   &detail,
 			Instance: &requestPath,
 		}
@@ -106,6 +116,7 @@ func (h *Handler) mapListError(err error, requestPath string) oapigen.ListContai
 	return oapigen.ListContainers500ApplicationProblemPlusJSONResponse{
 		Type:     v1alpha1.INTERNAL,
 		Title:    httperror.InternalTitle,
+		Status:   util.Ptr(int32(http.StatusInternalServerError)),
 		Detail:   &detail,
 		Instance: &requestPath,
 	}

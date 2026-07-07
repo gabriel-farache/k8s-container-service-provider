@@ -919,6 +919,40 @@ var _ = Describe("HTTP Server", func() {
 		Expect(healthJSON).To(HaveKey("uptime"))
 	})
 
+	// TC-I119: HTTP list JSON response uses 'results' field (AEP-132)
+	// Validates: REQ-AEP-132-010 / AC-API-090
+	It("returns list JSON with results key, not containers (TC-I119)", func() {
+		repo := &mockContainerRepo{
+			ListFunc: func(_ context.Context, _ int32, _ string) (*v1alpha1.ContainerList, error) {
+				return &v1alpha1.ContainerList{
+					Results: []v1alpha1.Container{},
+				}, nil
+			},
+		}
+		addr, cancel, errCh := startServerWithRepo(defaultConfig(), nil, nil, repo)
+		defer func() {
+			cancel()
+			Eventually(errCh).WithTimeout(10 * time.Second).Should(Receive())
+		}()
+
+		resp, err := http.Get(fmt.Sprintf("http://%s/api/v1alpha1/containers", addr))
+		Expect(err).NotTo(HaveOccurred())
+		defer func() { _ = resp.Body.Close() }()
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+		body, err := io.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+
+		var listJSON map[string]any
+		Expect(json.Unmarshal(body, &listJSON)).To(Succeed())
+		Expect(listJSON).To(HaveKey("results"), "AEP-132: list must use 'results' field")
+		Expect(listJSON).NotTo(HaveKey("containers"), "AEP-132: 'containers' field must not be present")
+
+		results, ok := listJSON["results"].([]any)
+		Expect(ok).To(BeTrue(), "AEP-132: 'results' must be a JSON array, not null or another type")
+		Expect(results).To(BeEmpty())
+	})
+
 	// TC-I097: Request logging — error request (404)
 	It("logs HTTP error requests with correct status (TC-I097)", func() {
 		repo := &mockContainerRepo{

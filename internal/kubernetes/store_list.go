@@ -65,7 +65,7 @@ func (s *K8sContainerStore) List(ctx context.Context, maxPageSize int32, pageTok
 	}
 
 	result := &v1alpha1.ContainerList{
-		Containers: &containers,
+		Results: containers,
 	}
 	if offset+limit < total {
 		token := base64.StdEncoding.EncodeToString([]byte(strconv.Itoa(offset + limit)))

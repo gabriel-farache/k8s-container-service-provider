@@ -174,12 +174,11 @@ type ContainerImage struct {
 	AdditionalProperties map[string]interface{} `json:"-"`
 }
 
-// ContainerList Paginated list of container instances
+// ContainerList Paginated list of container instances (AEP-132 List response)
 type ContainerList struct {
-	Containers *[]Container `json:"containers,omitempty"`
-
 	// NextPageToken Token for retrieving the next page of results
-	NextPageToken *string `json:"next_page_token,omitempty"`
+	NextPageToken *string     `json:"next_page_token,omitempty"`
+	Results       []Container `json:"results"`
 }
 
 // ContainerMemory Memory resource constraints

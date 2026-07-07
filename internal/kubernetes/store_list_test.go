@@ -28,8 +28,7 @@ var _ = Describe("K8s Store", func() {
 			result, err := s.List(context.Background(), 2, "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).NotTo(BeNil())
-			Expect(result.Containers).NotTo(BeNil())
-			Expect(*result.Containers).To(HaveLen(2))
+			Expect(result.Results).To(HaveLen(2))
 			Expect(result.NextPageToken).NotTo(BeNil())
 			Expect(*result.NextPageToken).NotTo(BeEmpty())
 		})
@@ -55,14 +54,12 @@ var _ = Describe("K8s Store", func() {
 			secondPage, err := s.List(context.Background(), 2, *firstPage.NextPageToken)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(secondPage).NotTo(BeNil())
-			Expect(secondPage.Containers).NotTo(BeNil())
-
 			// Verify no overlap
 			firstIDs := make(map[string]bool)
-			for _, c := range *firstPage.Containers {
+			for _, c := range firstPage.Results {
 				firstIDs[*c.Id] = true
 			}
-			for _, c := range *secondPage.Containers {
+			for _, c := range secondPage.Results {
 				Expect(firstIDs).NotTo(HaveKey(*c.Id), "second page should not overlap with first")
 			}
 		})
@@ -82,8 +79,7 @@ var _ = Describe("K8s Store", func() {
 			result, err := s.List(context.Background(), 0, "") // 0 means default
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).NotTo(BeNil())
-			Expect(result.Containers).NotTo(BeNil())
-			Expect(len(*result.Containers)).To(BeNumerically("<=", 50))
+			Expect(len(result.Results)).To(BeNumerically("<=", 50))
 			Expect(result.NextPageToken).NotTo(BeNil())
 			Expect(*result.NextPageToken).NotTo(BeEmpty())
 		})
@@ -109,8 +105,7 @@ var _ = Describe("K8s Store", func() {
 			result, err := s.List(context.Background(), 10, "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).NotTo(BeNil())
-			Expect(result.Containers).NotTo(BeNil())
-			Expect(*result.Containers).To(BeEmpty())
+			Expect(result.Results).To(BeEmpty())
 			Expect(result.NextPageToken).To(BeNil())
 		})
 
